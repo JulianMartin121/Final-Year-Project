@@ -10,27 +10,9 @@
     </head>
 
     <body>
-        <header>
-            <nav>
-                <ul>
-                    <li><a href="{% url 'home' %}">Home</a></li>
-                    {% if user.is_authenticated %}
-                        <li><a href="{% url 'logout' %}">Logout</a></li>
-                    {% else %}
-                        <li><a href="{% url 'student_login' %}">Student Login</a></li>
-                        <li><a href="{% url 'teacher_login' %}">Teacher Login</a></li>
-                        <li><a href="{% url 'student_register' %}">Student Register</a></li>
-                        <li><a href="{% url 'teacher_register' %}">Teacher Register</a></li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </header>
-
-        {% block body %}{% endblock %}
-
-        <footer>
-            <p>&copy; {{ year }} - {{ site_name }}</p>
-        </footer>
-    </body>
-</html>
-
+        <div class="header">
+            <img src="media\Uni_of_surrey.png" alt="University of Surrey Logo" class="logo" style="float: left">
+            <h1 class="title">Surreylearn</h1>
+            <a href="{% url 'login' %}" class="login" style="float: right;">Login</a>
+            <a href="{% url 'register' %}" class="register" style="float: right;">Register</a>
+        </div>
