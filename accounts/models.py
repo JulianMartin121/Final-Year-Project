@@ -14,6 +14,12 @@ class CustomUser(AbstractUser):
     # Field to distinguish between student and teacher
     user_type = models.PositiveSmallIntegerField(choices=USER_TYPE_CHOICES, default=1)
 
+    # Field to store the University ID
+    Uni_ID = models.CharField(max_length=10, default='')
+
+    # Email field
+    email = models.EmailField(_('email address'), unique=True)
+
     # Override the groups field to avoid reverse accessor clashes
     groups = models.ManyToManyField(
         Group,
@@ -36,6 +42,4 @@ class CustomUser(AbstractUser):
         related_name="customuser_set",
         related_query_name="user",
     )
-
-    
 

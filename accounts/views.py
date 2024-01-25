@@ -1,47 +1,43 @@
 from django.shortcuts import render, redirect
-from .forms import StudentRegistrationForm, TeacherRegistrationForm, StudentLoginForm, TeacherLoginForm
+from .forms import RegistrationForm, LoginForm
+from django.contrib.auth import authenticate, login, logout
+
 
 # Create your views here.
 
-# Student registration view
-def student_register_request(request):
+def register_view(request):
     if request.method == "POST":
-        form = StudentRegistrationForm(request.POST)
+        form = RegistrationForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('accounts:student_login')
+            user = form.save(commit = False)
+            user_type = form.cleaned_data.get('user_type')
+            if user_type == '1':
+                user.user_type = 1 # Set user to student
+            if user_type == '2':
+                user.user_type = 2 # Set user to teacher
+            user.save()
+            login(request, user)
+            return redirect('home')
     else:
-        form = StudentRegistrationForm()
-    return render(request=request, template_name="accounts/student_register.html", context={"register_form":form})
+        form = RegistrationForm()
+    return render(request, 'accounts/register.html', {'form': form})
 
-# Teacher registration view
-def teacher_register_request(request):
+
+def login_view(request):
     if request.method == "POST":
-        form = TeacherRegistrationForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('accounts:teacher_login')
+        form = LoginForm(data=request.POST)
+        user = authenticate(request, username=request.POST['username'], password=request.POST['password'], 
+                            user_type=request.POST['user_type'], uni_id=request.POST['uni_ID'])
+        if user is not None:
+            login(request, user)
+            return redirect('home')
     else:
-        form = TeacherRegistrationForm()
-    return render(request=request, template_name="accounts/teacher_register.html", context={"register_form":form})
+        form = LoginForm()
+    return render(request, 'accounts/login.html', {'form': form})
 
-# Student login view
-def student_login_request(request):
-    if request.method == "POST":
-        form = StudentLoginForm(request, data=request.POST)
-        if form.is_valid():
-            return redirect('homepage:student_home')
-    else:
-        form = StudentLoginForm()
-    return render(request=request, template_name="accounts/student_login.html", context={"login_form":form})
+def logout_view(request):
+    logout(request)
+    return redirect('home')
 
-# Teacher login view
-def teacher_login_request(request):
-    if request.method == "POST":
-        form = TeacherLoginForm(request, data=request.POST)
-        if form.is_valid():
-            return redirect('homepage:teacher_home')
-    else:
-        form = TeacherLoginForm()
-    return render(request=request, template_name="accounts/teacher_login.html", context={"login_form":form})
-
+def profile_view(request):
+    return render(request, 'accounts/profile.html')
