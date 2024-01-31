@@ -5,26 +5,32 @@
         <p>
             <label for="id_username">Username:</label>
             {{ form.username }}
+            {{ form.username.errors }}
         </p>
         <p>
             <label for="id_email">Email:</label>
             {{ form.email }}
+            {{ form.email.errors }}
         </p>
         <p>
             <label for="id_user_type">User Type:</label>
             {{ form.user_type }}
+            {{ form.user_type.errors }}
         </p>
         <p>
             <label for="id_password1">Password:</label>
             {{ form.password1 }}
+            {{ form.password1.errors }}
         </p>
         <p>
             <label for="id_password2">Confirm Password:</label>
             {{ form.password2 }}
+            {{ form.password2.errors }}
         </p>
         <p>
             <label for ="Uni_ID">University ID:</label>
             {{ form.Uni_ID }}
+            {{ form.Uni_ID.errors }}
         </p>
         <button type="submit">Register</button>
     </form>
