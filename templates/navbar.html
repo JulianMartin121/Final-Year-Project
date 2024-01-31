@@ -1,0 +1,13 @@
+{% load static %}
+<div class = "navbar">
+    <div class="logo">
+        <a href="{% url 'home' %}">
+            <img src="{% static 'media\Uni_of_surrey.png' %}" alt="logo" style="width: 600px; height: 150px;">
+        </a>
+    </div>
+    <div class="links">
+        <a href="{% url 'login' %}" class="login" style="margin-left: 5px">Login</a>
+        <a href="{% url 'register' %}" class="register" style="margin-left: 4px">Register</a>
+    </div>
+
+</div>

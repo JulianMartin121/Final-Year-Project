@@ -137,6 +137,3 @@ STATICFILES_FINDERS = [
 # Media
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-
-AUTHENTICATION_BACKENDS = ['myapp.backends.CustomUserModelBackend'] # Auth backend for custom user model

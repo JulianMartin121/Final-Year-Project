@@ -9,10 +9,10 @@
         {% block head %}{% endblock %}
     </head>
 
-    <body>
-        <div class="header">
-            <img src="media\Uni_of_surrey.png" alt="University of Surrey Logo" class="logo" style="float: left">
-            <h1 class="title">Surreylearn</h1>
-            <a href="{% url 'login' %}" class="login" style="float: right;">Login</a>
-            <a href="{% url 'register' %}" class="register" style="float: right;">Register</a>
-        </div>
+<body>
+    {% include "navbar.html" %}
+    <main>
+        {% block content %}
+        {% endblock content %}
+    </main>
+</body>
