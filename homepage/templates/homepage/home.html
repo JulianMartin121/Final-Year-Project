@@ -1,4 +1,17 @@
 {% extends "base.html" %}
-{% block title %}
-Surreylearn Homepage
-{% endblock title%}
+{% load static %}
+{% load sass_tags %}
+
+{% block content %}
+<div class = "module-container">
+    <div class = "module">
+        <a href = "{% url 'module1' %}">Module 1</a>
+    </div>
+    <div class = "module">
+        <a href = "{% url 'module2' %}">Module 2</a>
+    </div>
+    <div class = "module">
+        <a href = "{% url 'module3' %}">Module 3</a>
+    </div>
+</div>
+{% endblock content%}
