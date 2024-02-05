@@ -3,12 +3,7 @@ from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from .models import CustomUser
 
 class RegistrationForm(UserCreationForm):
-    USER_TYPE_CHOICES = (
-        (1, 'student'),
-        (2, 'teacher'),
-    )
-
-    user_type = forms.ChoiceField(choices=USER_TYPE_CHOICES, required=True)
+    user_type = forms.ChoiceField(choices = CustomUser.USER_TYPE_CHOICES, label = 'User Type')
 
     class Meta:
         model = CustomUser
@@ -21,17 +16,14 @@ class RegistrationForm(UserCreationForm):
             'password2': 'Confirm Password',}
         
     def save(self, commit=True):
-        user = super(RegistrationForm, self).save(commit=False)
+        user = super().save(commit=False)
         user.user_type = self.cleaned_data['user_type']
-
-        if user.user_type == '1':
-            user.user_type = 1 # Set user to student
-            user.studentID = self.cleaned_data['Uni_ID']
-        elif user.user_type == '2':
-            user.user_type = 2 # Set user to teacher
-            user.teacherID = self.cleaned_data['Uni_ID']
+        user.email = self.cleaned_data['email']
+        user.Uni_ID = self.cleaned_data['Uni_ID']
 
         if commit:
+            print("Committed.")
+            user.set_password(self.cleaned_data['password1'])
             user.save()
         return user
 

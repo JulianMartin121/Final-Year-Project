@@ -7,12 +7,12 @@ from django.utils.translation import gettext_lazy as _
 # Custom User model, the two types will be student and teacher
 class CustomUser(AbstractUser): 
     USER_TYPE_CHOICES = (
-        (1, 'student'),
-        (2, 'teacher'),
+        ('student', 'Student'),
+        ('teacher', 'Teacher'),
     )
-
+    
     # Field to distinguish between student and teacher
-    user_type = models.PositiveSmallIntegerField(choices=USER_TYPE_CHOICES, default=1)
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='student')
 
     # Field to store the University ID
     Uni_ID = models.CharField(max_length=10, default='')
