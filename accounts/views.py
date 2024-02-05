@@ -10,33 +10,39 @@ from django.urls import reverse
 def register_view(request):
     if request.method == "POST":
         form = RegistrationForm(request.POST)
+        print("Form checking now.")
         if form.is_valid():
-            user = form.save(commit = False)
-            user_type = form.cleaned_data.get('user_type')
-            if user_type == '1':
-                user.user_type = 1 # Set user to student
-            if user_type == '2':
-                user.user_type = 2 # Set user to teacher
-            user.save()
+            user = form.save()
+            print(form.cleaned_data)
+
+            raw_username = form.cleaned_data.get('username')
+            raw_password = form.cleaned_data.get('password1')
+            user = authenticate(username=raw_username, password=raw_password)
+
+            print(user)
+
             login(request, user)
-            return redirect(reverse('home'))
+            return redirect('home')
         else:
+            print("Form worked but not valid.")
             return render(request, 'accounts/register.html', {'form': form})
     else:
         form = RegistrationForm()
     return render(request, 'accounts/register.html', {'form': form})
 
-
 def login_view(request):
     if request.method == "POST":
         form = LoginForm(data=request.POST)
-        user = authenticate(request, username=request.POST['username'], password=request.POST['password'])
-        if user is not None:
-            login(request, user)
-            return redirect(reverse('home'))
-        else:
-            # Auth has failed, render the form again with an error message
-            return render(request, 'accounts/login.html', {'form': form, 'message': 'Invalid credentials'})
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return redirect('home')
+            else:
+                return render(request, 'accounts/login.html', {'form': form})
+
     else:
         form = LoginForm()
     return render(request, 'accounts/login.html', {'form': form})
