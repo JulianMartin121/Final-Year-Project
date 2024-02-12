@@ -1,31 +1,24 @@
 .main-content {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  flex-wrap: wrap;
   justify-content: center;
-  height: 500px;
-  padding-top: 30px;
-  /* Adjust this value based on the height of your navbar */ }
-  .main-content .module-container {
-    display: flex;
-    justify-content: space-around;
-    border: 1px solid black; }
-  .main-content .module {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    border: 1px solid black;
+  align-items: center;
+  height: 50vh; }
+
+.card {
+  flex: 1 0 auto;
+  margin: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+  .card .card-img-top {
+    width: 150px;
+    height: 150px;
+    object-fit: cover; }
+  .card .card-body {
     padding: 20px; }
-  .main-content .module-image {
-    width: 100%;
-    object-fit: cover;
-    height: 50px; }
-  .main-content .module a {
-    text-decoration: none;
-    color: black;
-    transition: color 0.3s ease; }
-  .main-content .module a:hover {
-    background-color: #2dbd8d;
-    color: blue; }
+    .card .card-body .card-title {
+      margin-bottom: 20px;
+      font-size: 20px;
+      font-weight: bold; }
 
 /*# sourceMappingURL=modstyle.css.map */
