@@ -2,8 +2,12 @@
 {% load static %}
 {% load sass_tags %}
 
+{% block head %}
+<link rel="stylesheet" type="text/css" href={% sass_src 'css/modstyle.scss' %}>
+{% endblock %}
+
 {% block content %}
-<div class = "module-container">
+<!-- <div class = "module-container">
     <div class = "module">
         <a href = "{% url 'module1' %}">Module 1</a>
     </div>
@@ -13,5 +17,29 @@
     <div class = "module">
         <a href = "{% url 'module3' %}">Module 3</a>
     </div>
+</div> -->
+
+<div class = "main-content">
+    <div class = "card">
+        <div class = "card-body">
+            <img class = "card-img-top" src = "{% static 'media\lakemod1.png' %}" alt = "Module 1 image">
+            <h5 class = "card-title"><a href="{% url 'module1' %}">Module 1</a></h5>
+        </div>
+    </div>
+
+    <div class = "card">
+        <div class = "card-body">
+            <img class = "card-img-top" src = "{% static 'media\lakemod2.png' %}" alt = "Module 1 image">
+            <h5 class = "card-title"><a href="{% url 'module2' %}">Module 2</a></h5>
+        </div>
+    </div>
+
+    <div class = "card">
+        <div class = "card-body">
+            <img class = "card-img-top" src = "{% static 'media\lakemod3.png' %}" alt = "Module 1 image">
+            <h5 class = "card-title"><a href="{% url 'module3' %}">Module 3</a></h5>
+        </div>
+    </div>
+
 </div>
 {% endblock content%}
