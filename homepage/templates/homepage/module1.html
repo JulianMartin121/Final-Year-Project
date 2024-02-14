@@ -2,17 +2,27 @@
 {% load static %}
 {% load sass_tags %}
 
-{% block content %}
+{% block head %}
+<link rel="stylesheet" type="text/css" href={% sass_src 'css/modnav.scss' %}>
+{% endblock %}
 
+{% block content %}
 <!DOCTYPE html>
 <html>
 <head>
     <title>Module 1</title>
 </head>
-<body>
-    <h1>Module 1</h1>
-    <p>Module 1 content</p>
-</body>
+<nav class="module-navbar">
+    <ul>
+      <li><a href="{% url 'module1_home' %}">Home</a></li>
+      <li class="dropdown">
+        <a href="#">Course Materials</a>
+        <ul class="dropdown-content">
+          <li><a href="{% url 'course_material_1' %}">Course Material 1</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
 </html>
 
 {% endblock content %}
