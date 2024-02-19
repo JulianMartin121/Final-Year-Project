@@ -67,7 +67,7 @@
     border-bottom: 1px solid #ddd
 }
 
-// Style the dropdown items on hover
+// Style the dropdown items on click
 .module-navbar ul ul a {
     padding: 12px 16px;
     color: #000000;
@@ -83,6 +83,6 @@
     border-bottom: none;
   }
   
-  .dropdown:hover .dropdown-content {
-    display: block;
+  .module-navbar .dropdown .dropdown-content {
+    display: none;
   }

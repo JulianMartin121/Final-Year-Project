@@ -59,7 +59,7 @@
 .module-navbar ul ul a:last-child {
   border-bottom: none; }
 
-.dropdown:hover .dropdown-content {
-  display: block; }
+.module-navbar .dropdown .dropdown-content {
+  display: none; }
 
 /*# sourceMappingURL=modnav.css.map */
