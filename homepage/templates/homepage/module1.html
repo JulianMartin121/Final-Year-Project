@@ -4,7 +4,21 @@
 
 {% block head %}
 <link rel="stylesheet" type="text/css" href={% sass_src 'css/modnav.scss' %}>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<!-- Create a script for when user preses course materials, it displays the dropdown menu -->
+<script>
+  $(document).ready(function() {
+    $('.dropdown').click(function(e){
+      e.preventDefault();
+      $(this).find('.dropdown-content').Toggle();
+    });
+
+  });
+</script>
+
 {% endblock %}
+
 
 {% block content %}
 <!DOCTYPE html>
@@ -18,7 +32,7 @@
       <li class="dropdown">
         <a href="#">Course Materials</a>
         <ul class="dropdown-content">
-          <li><a href="{% url 'course_material_1' %}">Course Material 1</a></li>
+          <li><a href="{% url 'course_material_1' %}">Course Materials</a></li>
         </ul>
       </li>
     </ul>
