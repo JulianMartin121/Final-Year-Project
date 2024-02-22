@@ -1,10 +1,43 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load sass_tags %}
+
+{% block head %}
+<link rel="stylesheet" type="text/css" href={% sass_src 'css/modnav.scss' %}>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<!-- Create a script for when user presses course materials, it displays the dropdown menu -->
+<script>
+  $(document).ready(function() {
+    $('.dropdown').click(function(e){
+      if($(e.target).is('.dropdown > a')){
+        e.preventDefault();
+        $(this).find('.dropdown-content').toggle();
+      }
+    });
+  });
+</script>
+
+{% endblock %}
+
+
+{% block content %}
 <!DOCTYPE html>
 <html>
 <head>
     <title>Module 3</title>
 </head>
-<body>
-    <h1>Module 3</h1>
-    <p>Module 3 content</p>
-</body>
+<nav class="module-navbar">
+    <ul>
+      <li><a href="{% url 'module3' %}">Home</a></li>
+      <li class="dropdown">
+        <a href="#">Course Materials</a>
+        <ul class="dropdown-content">
+          <li><a href="{% url 'course_material_3' %}">Course Material</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
 </html>
+
+{% endblock content %}
