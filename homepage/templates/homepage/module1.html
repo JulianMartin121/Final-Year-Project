@@ -10,10 +10,11 @@
 <script>
   $(document).ready(function() {
     $('.dropdown').click(function(e){
-      e.preventDefault();
-      $(this).find('.dropdown-content').toggle();
+      if($(e.target).is('.dropdown > a')){
+        e.preventDefault();
+        $(this).find('.dropdown-content').toggle();
+      }
     });
-
   });
 </script>
 
@@ -28,11 +29,11 @@
 </head>
 <nav class="module-navbar">
     <ul>
-      <li><a href="{% url 'module1_home' %}">Home</a></li>
+      <li><a href="{% url 'module1' %}">Home</a></li>
       <li class="dropdown">
         <a href="#">Course Materials</a>
         <ul class="dropdown-content">
-          <li><a href="{% url 'course_material_1' %}">Course Materials</a></li>
+          <li><a href="{% url 'course_material_1' %}">Course Material</a></li>
         </ul>
       </li>
     </ul>
