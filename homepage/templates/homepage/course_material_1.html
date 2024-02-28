@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load sass_tags %}
+
+{% block head %}
+<link rel="stylesheet" type="text/css" href={% sass_src 'css/modnav.scss' %}>
+<link rel="stylesheet" type="text/css" href={% sass_src 'css/lecnav.scss' %}>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<!-- Create a script for when user presses course materials, it displays the dropdown menu -->
+<script>
+    $(document).ready(function() {
+        $('.lecture-card > .dropdown > a').click(function(e){
+            e.preventDefault();
+            $(this).next('.dropdown-content').toggle();
+        });
+    
+        $('.dropdown > a').click(function(e){
+            e.preventDefault();
+            $(this).next('.dropdown-content').toggle();
+        });
+    });
+</script>
+{% endblock %}
+
+
+{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Module 1</title>
+</head>
+<nav class="module-navbar">
+    <ul>
+      <li><a href="{% url 'module1' %}">Home</a></li>
+      <li class="dropdown">
+        <a href="#">Course Materials</a>
+        <ul class="dropdown-content">
+          <li><a href="{% url 'course_material_1' %}">Course Material</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+
+
+<nav class="lecture-navbar">
+    <ul>
+        <li class="dropdown lecture-card">
+            <a href="#">Lecture1</a>
+            <ul class="dropdown-content">
+                <li class="dropdown">
+                    <a href="#">Lecture 1.A</a>
+                    <ul class="dropdown-content">
+                        <li><a href="#">Example File 1</a></li>
+                        <li><a href="#">Example File 2</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="#">Lecture 1.B</a>
+                    <ul class="dropdown-content">
+                        <li><a href="#">Example File 1</a></li>
+                        <li><a href="#">Example File 2</a></li>
+                    </ul>
+                </li>
+                <li><a href="#">Example File 1</a></li>
+            </ul>
+        </li>
+        <li class="dropdown lecture-card">
+            <a href="#">Lecture2</a>
+            <ul class="dropdown-content">
+                <li class="dropdown">
+                    <a href="#">Lecture 2.A</a>
+                    <ul class="dropdown-content">
+                        <li><a href="#">Example File 1</a></li>
+                        <li><a href="#">Example File 2</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="#">Lecture 2.B</a>
+                    <ul class="dropdown-content">
+                        <li><a href="#">Example File 1</a></li>
+                        <li><a href="#">Example File 2</a></li>
+                    </ul>
+                </li>
+                <li><a href="#">Example File 1</a></li>
+            </ul>
+        </li>
+    </ul>
+</nav>
+
+</html>
+
+{% endblock content %}
