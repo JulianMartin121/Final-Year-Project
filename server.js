@@ -6,10 +6,23 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
+const fetch = require('node-fetch');
+
 app.use(express.static('homepage/templates/homepage'));
+
 
 io.on('connection', (socket) => {
     console.log('a user connected');
+
+    let teachers = [];
+
+    fetch('http://localhost:3000/api/teachers')
+    .then(response => response.json())
+    .then(data => {
+        teachers = data.map(teacher => ({ id: teacher.id, chats: [] }));
+    })
+    .catch(error => console.error('Error:', error));
+
 
     socket.on('chat message', (msg) => {
         io.emit('chat message', msg);
