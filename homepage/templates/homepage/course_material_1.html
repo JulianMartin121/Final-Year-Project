@@ -49,7 +49,7 @@
         <li class="dropdown lecture-card">
             <a href="#">Lecture1</a>
             <ul class="dropdown-content">
-                <li><a href="#" class="chat-button">Chat with your teacher</a></li>
+                <li><a href="#" class="chat-button" data-lectire-number="1">Chat with your teacher</a></li>
                 <li class="dropdown">
                     <a href="#">Lecture 1.A</a>
                     <ul class="dropdown-content">
@@ -97,9 +97,11 @@
 </div>
 
 <script>
+    let currentLectureNumber;
     document.querySelectorAll('.chat-button').forEach((button) => {
         button.addEventListener('click', (e) => {
             e.preventDefault();
+            currentLectureNumber = e.target.getAttribute('data-lecture-number');
             document.getElementById('chat').style.display = 'block';
         });
     });
@@ -114,12 +116,12 @@
     const send = document.getElementById('send');
     const messages = document.getElementById('messages');
     send.addEventListener('click', () => {
-        socket.emit('chat message', message.value);
+        socket.emit('chat message', { text: message.value, lecture: currentLectureNumber });
         message.value = '';
     });
     socket.on('chat message', (msg) => {
         const li = document.createElement('li');
-        li.textContent = msg;
+        li.textContent = `Lecture ${msg.lecture}: ${msg.text}`;
         messages.appendChild(li);
     });
 </script>

@@ -3,9 +3,14 @@ from .forms import RegistrationForm, LoginForm
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse
-
+from django.http import JsonResponse
+from .models import CustomUser
 
 # Create your views here.
+
+def get_teachers(request):
+    teachers = CustomUser.objects.filter(user_type='teacher').values('id', 'username')
+    return JsonResponse(list(teachers), safe=False)
 
 def register_view(request):
     if request.method == "POST":
