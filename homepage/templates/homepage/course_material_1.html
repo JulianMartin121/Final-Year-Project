@@ -103,7 +103,25 @@
             document.getElementById('chat').style.display = 'block';
         });
     });
-    const socket = io();
+</script>
+
+<script src="https://cdn.socket.io/3.0.1/socket.io.min.js"></script>
+
+<!-- Create a script for the chat -->
+<script>
+    const socket = io('http://localhost:3000');
+    const message = document.getElementById('message');
+    const send = document.getElementById('send');
+    const messages = document.getElementById('messages');
+    send.addEventListener('click', () => {
+        socket.emit('chat message', message.value);
+        message.value = '';
+    });
+    socket.on('chat message', (msg) => {
+        const li = document.createElement('li');
+        li.textContent = msg;
+        messages.appendChild(li);
+    });
 </script>
 
 </html>
