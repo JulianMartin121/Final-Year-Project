@@ -5,6 +5,7 @@
 {% block head %}
 <link rel="stylesheet" type="text/css" href={% sass_src 'css/modnav.scss' %}>
 <link rel="stylesheet" type="text/css" href={% sass_src 'css/lecnav.scss' %}>
+<link rel="stylesheet" type="text/css" href={% sass_src 'css/chat.scss' %}>
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 
 <!-- Create a script for when user presses course materials, it displays the dropdown menu -->
@@ -48,6 +49,7 @@
         <li class="dropdown lecture-card">
             <a href="#">Lecture1</a>
             <ul class="dropdown-content">
+                <li><a href="#" class="chat-button">Chat with your teacher</a></li>
                 <li class="dropdown">
                     <a href="#">Lecture 1.A</a>
                     <ul class="dropdown-content">
@@ -88,6 +90,21 @@
     </ul>
 </nav>
 
-</html>
+<div id = "chat">
+    <div id="messages"></div>
+    <input id="message" type="text" placeholder="Type your message here">
+    <button id="send">Send</button>
+</div>
 
+<script>
+    document.querySelectorAll('.chat-button').forEach((button) => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('chat').style.display = 'block';
+        });
+    });
+    const socket = io();
+</script>
+
+</html>
 {% endblock content %}
