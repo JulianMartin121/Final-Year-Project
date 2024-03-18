@@ -42,8 +42,7 @@
       </li>
     </ul>
   </nav>
-
-
+  
 <nav class="lecture-navbar">
     <ul>
         <li class="dropdown lecture-card">
@@ -98,10 +97,11 @@
 
 <script>
     let currentLectureNumber;
+    // When the user clicks the chat button, display the chat
     document.querySelectorAll('.chat-button').forEach((button) => {
         button.addEventListener('click', (e) => {
             e.preventDefault();
-            currentLectureNumber = e.target.getAttribute('data-lecture-number');
+            currentLectureNumber = e.target.getAttribute('data-lecture-number'); // Get the lecture number from the button
             document.getElementById('chat').style.display = 'block';
         });
     });
@@ -115,10 +115,14 @@
     const message = document.getElementById('message');
     const send = document.getElementById('send');
     const messages = document.getElementById('messages');
+
+    // When the user clicks the send button, send the message to the server
     send.addEventListener('click', () => {
         socket.emit('chat message', { text: message.value, lecture: currentLectureNumber });
         message.value = '';
     });
+
+    // When the server sends a message, add it to the list of messages
     socket.on('chat message', (msg) => {
         const li = document.createElement('li');
         li.textContent = `Lecture ${msg.lecture}: ${msg.text}`;

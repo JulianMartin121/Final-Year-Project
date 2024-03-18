@@ -8,10 +8,6 @@ from .models import CustomUser
 
 # Create your views here.
 
-def get_teachers(request):
-    teachers = CustomUser.objects.filter(user_type='teacher').values('id', 'username')
-    return JsonResponse(list(teachers), safe=False)
-
 def register_view(request):
     if request.method == "POST":
         form = RegistrationForm(request.POST)

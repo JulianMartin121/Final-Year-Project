@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 # Create your models here.
 
@@ -15,7 +17,7 @@ class CustomUser(AbstractUser):
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='student')
 
     # Field to store the University ID
-    Uni_ID = models.CharField(max_length=10, default='')
+    Uni_ID = models.CharField(max_length=10, default='', unique=True)
 
     # Email field
     email = models.EmailField(_('email address'), unique=True)
@@ -42,4 +44,3 @@ class CustomUser(AbstractUser):
         related_name="customuser_set",
         related_query_name="user",
     )
-
