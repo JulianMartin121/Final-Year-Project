@@ -2,14 +2,24 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const sqlite3 = require('sqlite3').verbose();
+const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+
+const io = socketIo(server, {
+  cors: {
+    origin: "*",  // Allow requests from any origin
+    methods: ["GET", "POST"],  // Allow these HTTP methods
+    allowedHeaders: ["my-custom-header"],  // Allow these custom headers
+    credentials: true  // Allow cookies
+  }
+});
 
 app.use(express.static('homepage/templates/homepage'));
 
 let teachers = [];
+let teacherAssignments = {};
 
 // Connect to the SQLite database and fetch teachers
 let db = new sqlite3.Database('db.sqlite3', sqlite3.OPEN_READONLY, (err) => {
@@ -52,6 +62,10 @@ io.on('connection', (socket) => {
             const teacher = teachers.sort((a, b) => a.chats.length - b.chats.length)[0];
             teacher.chats.push(socket);
             socket.teacher = teacher;
+
+            
+            // Store the teacher assigned to the student
+            teacherAssignments[socket.id] = teacher.id;
         }
 
         io.to(socket.teacher.id).emit('chat message', msg);
@@ -70,6 +84,15 @@ io.on('connection', (socket) => {
             }
         }
     });
+});
+
+// Create a new endpoint to get the teacher assigned to a student
+app.get('/teacher_assignment', (req, res) => {
+    const chatId = req.query.chatId;
+    console.log(`Chat ID: ${chatId}`);
+    const teacherId = teacherAssignments[chatId];
+    console.log(`Teacher ID: ${teacherId}`);
+    res.json({ teacherId });
 });
 
 app.use(express.json());

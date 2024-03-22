@@ -3,6 +3,7 @@
 {% load sass_tags %}
 
 {% block head %}
+<script src="/socket.io/socket.io.js"></script>
 <link rel="stylesheet" type="text/css" href={% sass_src 'css/modnav.scss' %}>
 <link rel="stylesheet" type="text/css" href={% sass_src 'css/lecnav.scss' %}>
 <link rel="stylesheet" type="text/css" href={% sass_src 'css/chat.scss' %}>
@@ -48,7 +49,7 @@
         <li class="dropdown lecture-card">
             <a href="#">Lecture1</a>
             <ul class="dropdown-content">
-                <li><a href="#" class="chat-button" data-lectire-number="1">Chat with your teacher</a></li>
+                <li><a href="#" class="chat-button" data-lecture-number="1">Chat with your teacher</a></li>
                 <li class="dropdown">
                     <a href="#">Lecture 1.A</a>
                     <ul class="dropdown-content">
@@ -90,43 +91,100 @@
 </nav>
 
 <div id = "chat">
-    <div id="messages"></div>
-    <input id="message" type="text" placeholder="Type your message here">
-    <button id="send">Send</button>
+    <ul id="messages">
+        {% for message in messages %}
+            <li>{{ message.content }}</li>
+        {% endfor %}
+    </ul>
+    <form id="messageForm" method="post" action="{% url 'new_message' %}">
+        {% csrf_token %}
+        <input id="message" name="content" type="text" placeholder="Type your message here">
+        <input type="hidden" name="sender" value="{{ user.id }}">
+        <input type="hidden" name="receiver" value="{{ lecture.teacher.id }}">
+        <input type="hidden" name="lecture" value="{{ lecture.id }}">
+        <button id="send" type="submit">Send</button>
+    </form>
 </div>
 
 <script>
     let currentLectureNumber;
-    // When the user clicks the chat button, display the chat
-    document.querySelectorAll('.chat-button').forEach((button) => {
+
+    // Chat function
+    document.querySelectorAll('.chat-button').forEach(button => {
         button.addEventListener('click', (e) => {
             e.preventDefault();
             currentLectureNumber = e.target.getAttribute('data-lecture-number'); // Get the lecture number from the button
             document.getElementById('chat').style.display = 'block';
         });
     });
-</script>
 
-<script src="https://cdn.socket.io/3.0.1/socket.io.min.js"></script>
+    // Close the chat when the user clicks outside of it
+    window.addEventListener('click', (e) => {
+        const chat = document.getElementById('chat');
+        if (!chat.contains(e.target) && e.target.className !== 'chat-button') {
+            chat.style.display = 'none';
+        }
+    });
+
+    
+</script>
 
 <!-- Create a script for the chat -->
 <script>
     const socket = io('http://localhost:3000');
-    const message = document.getElementById('message');
-    const send = document.getElementById('send');
-    const messages = document.getElementById('messages');
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('message');
+    const sendButton = document.getElementById('send');
+    const messagesList = document.getElementById('messages');
 
-    // When the user clicks the send button, send the message to the server
-    send.addEventListener('click', () => {
-        socket.emit('chat message', { text: message.value, lecture: currentLectureNumber });
-        message.value = '';
+    socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+    socket.on('connect_error', (error) => {
+        console.log('Connection error:', error);
+    });
+
+    // When the user submits the form, send the message to the server
+    messageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        fetch(`http://localhost:3000/teacher_assignment?chatId=${socket.id}`)
+            .then(response => response.json())
+            .then(data => {
+                const teacherId = data.teacherId;
+                document.getElementbyId('id_reciever').value = teacherId;
+                
+                // Create a new FormData object from the form
+                const formData = new FormData(messageForm);
+                console.log('Form data:', [...formData.entries()]);
+
+                // Send a POST request with the form data
+                fetch(messageForm.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // If the request was successful, add the new message to the list of messages
+                    if (data.success) {
+                        const li = document.createElement('li');
+                        li.textContent = `Lecture ${data.lecture}: ${data.text}`;
+                        messagesList.appendChild(li);
+                        messageInput.value = '';
+                    }
+                });
+            });
     });
 
     // When the server sends a message, add it to the list of messages
     socket.on('chat message', (msg) => {
         const li = document.createElement('li');
         li.textContent = `Lecture ${msg.lecture}: ${msg.text}`;
-        messages.appendChild(li);
+        messagesList.appendChild(li);
     });
 </script>
 
