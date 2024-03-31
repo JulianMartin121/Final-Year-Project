@@ -4,7 +4,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from functools import wraps
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
-from .models import Message, CustomUser, Lecture
+from .models import Message, CustomUser
 
 
 # Create your views here.
@@ -63,14 +63,12 @@ def new_message(request):
     print('Received data:', request.POST)
     sender_id = request.POST.get('sender')
     receiver_id = request.POST.get('receiver')
-    lecture_id = request.POST.get('lecture')
     content = request.POST.get('content')
 
-    sender = CustomUser.objects.get(id=sender_id)
-    receiver = CustomUser.objects.get(id=receiver_id)
-    lecture = Lecture.objects.get(id=lecture_id)
+    sender = CustomUser.objects.get(Uni_ID=sender_id)
+    receiver = CustomUser.objects.get(Uni_ID=receiver_id)
 
-    message = Message(sender=sender, receiver=receiver, lecture=lecture, content=content)
+    message = Message(sender=sender, receiver=receiver, content=content)
     message.save()
 
     return JsonResponse({'message': 'Message sent successfully'})
