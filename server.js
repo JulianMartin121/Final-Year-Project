@@ -7,6 +7,8 @@ const cors = require('cors');
 const app = express();
 const server = http.createServer(app);
 
+app.use(cors());
+
 const io = socketIo(server, {
   cors: {
     origin: "*",  // Allow requests from any origin
@@ -37,10 +39,13 @@ db.serialize(() => {
         }
         for (let row of rows){
             teachers.push({
-                id: row.id,
+                id: row.Uni_ID,
                 chats: []
             });
         }
+
+        console.log(teachers);
+        console.log('Number of teachers:', teachers.length)
 
     });
 });
@@ -54,19 +59,23 @@ db.close((err) => {
 
 io.on('connection', (socket) => {
     console.log('a user connected');
+    // Assign the student to a teacher with the least chats when they send the first message
+    if (!socket.teacher){
+        console.log('Assigning teacher to student');
+        const teacher = teachers.sort((a, b) => a.chats.length - b.chats.length)[0];
+        teacher.chats.push(socket);
+        socket.teacher = teacher;
+
+        // Store the teacher assigned to the student
+        teacherAssignments[socket.id] = teacher.id;
+        console.log('Assigned teacher id:', teacher.id)
+    }
 
     // Broadcast the message to the teacher and student
     socket.on('chat message', (msg) => {
-        // Assign the student to a teacher with the least chats when they send the first message
-        if (!socket.teacher){
-            const teacher = teachers.sort((a, b) => a.chats.length - b.chats.length)[0];
-            teacher.chats.push(socket);
-            socket.teacher = teacher;
+        console.log(teachers);
 
-            
-            // Store the teacher assigned to the student
-            teacherAssignments[socket.id] = teacher.id;
-        }
+        msg.receiver = socket.teacher.id;
 
         io.to(socket.teacher.id).emit('chat message', msg);
         socket.emit('chat message', msg);

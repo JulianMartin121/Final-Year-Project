@@ -99,9 +99,8 @@
     <form id="messageForm" method="post" action="{% url 'new_message' %}">
         {% csrf_token %}
         <input id="message" name="content" type="text" placeholder="Type your message here">
-        <input type="hidden" name="sender" value="{{ user.id }}">
-        <input type="hidden" name="receiver" value="{{ lecture.teacher.id }}">
-        <input type="hidden" name="lecture" value="{{ lecture.id }}">
+        <input type="hidden" name="sender" value="{{ user.Uni_id }}">
+        <input type="hidden" id="id_reciever" name="receiver" value="">
         <button id="send" type="submit">Send</button>
     </form>
 </div>
@@ -153,7 +152,8 @@
             .then(response => response.json())
             .then(data => {
                 const teacherId = data.teacherId;
-                document.getElementbyId('id_reciever').value = teacherId;
+                console.log("Assigned teacher ID:", teacherId);
+                document.getElementById('id_reciever').value = teacherId;
                 
                 // Create a new FormData object from the form
                 const formData = new FormData(messageForm);
@@ -172,7 +172,7 @@
                     // If the request was successful, add the new message to the list of messages
                     if (data.success) {
                         const li = document.createElement('li');
-                        li.textContent = `Lecture ${data.lecture}: ${data.text}`;
+                        li.textContent = data.text;
                         messagesList.appendChild(li);
                         messageInput.value = '';
                     }
@@ -183,7 +183,7 @@
     // When the server sends a message, add it to the list of messages
     socket.on('chat message', (msg) => {
         const li = document.createElement('li');
-        li.textContent = `Lecture ${msg.lecture}: ${msg.text}`;
+        li.textContent = msg.text;
         messagesList.appendChild(li);
     });
 </script>
