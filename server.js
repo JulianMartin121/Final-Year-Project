@@ -24,7 +24,7 @@ let teachers = [];
 let teacherAssignments = {};
 
 // Connect to the SQLite database and fetch teachers
-let db = mysql.createConnection({
+let db = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password: '-BlueRay121-',
@@ -32,13 +32,7 @@ let db = mysql.createConnection({
     multipleStatements: true
 });
 
-db.connect((err) => {
-    if (err) {
-        console.error('Error connecting to the database: ' + err.stack);
-        return;
-    }
-    console.log('Connected to the database');
-});
+console.log("Connected to the database.");
 
 db.query('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, results) => {
     if (err){
@@ -48,7 +42,7 @@ db.query('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, 
 
     for (let row of results){
         teachers.push({
-            id: row.id,
+            id: row.Uni_ID,
             chats: []
         });
     }
@@ -57,12 +51,6 @@ db.query('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, 
     console.log('Number of teachers:', teachers.length);
 });
 
-db.end((err) => {
-    if (err) {
-        console.error(err.message);
-    }
-    console.log('Closed the database connection.');
-})
 
 io.on('connection', (socket) => {
     console.log('a user connected');
@@ -80,12 +68,24 @@ io.on('connection', (socket) => {
 
     // Broadcast the message to the teacher and student
     socket.on('chat message', (msg) => {
-        console.log(teachers);
+        console.log("Message received: ", msg.text);
+        console.log("Chat message: ", msg);
 
         msg.receiver = socket.teacher.id;
 
         io.to(socket.teacher.id).emit('chat message', msg);
         socket.emit('chat message', msg);
+
+        // Insert the message into chat logs
+        const query = 'INSERT INTO chat_logs (lectureNumber, message, timestamp) VALUES (?, ?, ?)';
+        const params = [msg.lectureNumber, msg.text, new Date()];
+        db.query(query, params, (err, results) => {
+            if (err){
+                console.error(err.message);
+                return;
+            }
+            console.log('Message inserted into chat logs');
+        });
     });
 
     socket.on('disconnect', () => {
@@ -117,6 +117,29 @@ app.post('/new_user', (req, res) => {
     const user = req.body;
     console.log(user);  // Log the user data to the console
     res.status(200).send('User data received');
+});
+
+app.get('/chat_logs', (req, res) => {
+    const lectureNumber = req.query.lectureNumber;
+    console.log(`Lecture Number: ${lectureNumber}`);
+
+    db.getConnection((err, connection) => {
+        if (err){
+            console.error(err.message);
+            return;
+        }
+
+        connection.query('SELECT * FROM chat_logs WHERE lectureNumber = ?', [lectureNumber], (err, results) => {
+            connection.release();
+            if (err){
+                console.error(err.message);
+                return;
+            }
+
+            res.json(results);
+        });
+
+    });
 });
 
 server.listen(3000, () => {
