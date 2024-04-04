@@ -91,22 +91,61 @@
 </nav>
 
 <div id = "chat">
-    <ul id="messages">
-        {% for message in messages %}
-            <li>{{ message.content }}</li>
-        {% endfor %}
-    </ul>
-    <form id="messageForm" method="post" action="{% url 'new_message' %}">
-        {% csrf_token %}
-        <input id="message" name="content" type="text" placeholder="Type your message here">
-        <input type="hidden" name="sender" value="{{ user.Uni_id }}">
-        <input type="hidden" id="id_reciever" name="receiver" value="">
-        <button id="send" type="submit">Send</button>
-    </form>
+    <div id = "chat-logs">
+        <ul id="messages">
+            {% for message in messages %}
+                <li>{{ message.content }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div id = "chat-form">
+        <form id="messageForm" method="post" action="{% url 'new_message' %}">
+            {% csrf_token %}
+            <input id="message" name="content" type="text" placeholder="Type your message here">
+            <input type="hidden" name="sender" value="{{ user.Uni_id }}">
+            <input type="hidden" id="id_reciever" name="receiver" value="">
+            <button id="send" type="submit">Send</button>
+        </form>
+    </div>
 </div>
 
 <script>
     let currentLectureNumber;
+    const socket = io('http://localhost:3000');
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('message');
+    const sendButton = document.getElementById('send');
+    const messagesList = document.getElementById('messages');
+
+    socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+    socket.on('connect_error', (error) => {
+        console.log('Connection error:', error);
+    });
+
+    // When the server sends a message, add it to the list of messages
+    socket.on('chat message', (msg) => {
+        const li = document.createElement('li');
+        li.textContent = msg.text;
+        messagesList.appendChild(li);
+    });
+
+    // Fetch chat logs for the current lecture
+    function fetchChatLogs(lectureNumber) {
+        fetch(`http://localhost:3000/chat_logs?lectureNumber=${lectureNumber}`)
+            .then(response => response.json())
+            .then(data => {
+                const messagesList = document.getElementById('messages');
+                messagesList.innerHTML = '';
+                data.forEach(message => {
+                    const li = document.createElement('li');
+                    li.textContent = message.content;
+                    messagesList.appendChild(li);
+                });
+            });
+    }
 
     // Chat function
     document.querySelectorAll('.chat-button').forEach(button => {
@@ -114,6 +153,7 @@
             e.preventDefault();
             currentLectureNumber = e.target.getAttribute('data-lecture-number'); // Get the lecture number from the button
             document.getElementById('chat').style.display = 'block';
+            fetchChatLogs(currentLectureNumber);
         });
     });
 
@@ -130,20 +170,6 @@
 
 <!-- Create a script for the chat -->
 <script>
-    const socket = io('http://localhost:3000');
-    const messageForm = document.getElementById('messageForm');
-    const messageInput = document.getElementById('message');
-    const sendButton = document.getElementById('send');
-    const messagesList = document.getElementById('messages');
-
-    socket.on('connect', () => {
-            console.log('Connected to server');
-        });
-
-    socket.on('connect_error', (error) => {
-        console.log('Connection error:', error);
-    });
-
     // When the user submits the form, send the message to the server
     messageForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -176,6 +202,8 @@
                         messagesList.appendChild(li);
                         messageInput.value = '';
                     }
+
+                    fetchChatLogs(currentLectureNumber);
                 });
             });
     });

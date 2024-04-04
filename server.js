@@ -1,7 +1,7 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const sqlite3 = require('sqlite3').verbose();
+const mysql = require('mysql');
 const cors = require('cors');
 
 const app = express();
@@ -24,33 +24,40 @@ let teachers = [];
 let teacherAssignments = {};
 
 // Connect to the SQLite database and fetch teachers
-let db = new sqlite3.Database('db.sqlite3', sqlite3.OPEN_READONLY, (err) => {
+let db = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: '-BlueRay121-',
+    database: 'fypdatabase',
+    multipleStatements: true
+});
+
+db.connect((err) => {
     if (err) {
-        console.error(err.message);
+        console.error('Error connecting to the database: ' + err.stack);
+        return;
     }
-    console.log('Connected to the database.');
-
+    console.log('Connected to the database');
 });
 
-db.serialize(() => {
-    db.all('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, rows) => {
-        if (err){
-            console.error(err.message);
-        }
-        for (let row of rows){
-            teachers.push({
-                id: row.Uni_ID,
-                chats: []
-            });
-        }
+db.query('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, results) => {
+    if (err){
+        console.error(err.message);
+        return;
+    }
 
-        console.log(teachers);
-        console.log('Number of teachers:', teachers.length)
+    for (let row of results){
+        teachers.push({
+            id: row.id,
+            chats: []
+        });
+    }
 
-    });
+    console.log(teachers);
+    console.log('Number of teachers:', teachers.length);
 });
 
-db.close((err) => {
+db.end((err) => {
     if (err) {
         console.error(err.message);
     }
