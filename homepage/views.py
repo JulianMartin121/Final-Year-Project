@@ -44,17 +44,29 @@ def module3_home(request):
 
 @login_required
 def course_material_1(request):
-    context = {}
+    user_type = request.user.user_type
+    context = {'user_type': user_type}
+    if user_type == 'teacher':
+        students = CustomUser.objects.filter(user_type='student')
+        context['students'] = students
     return render(request, 'homepage/course_material_1.html', context)
 
 @login_required
 def course_material_2(request):
-    context = {}
+    user_type = request.user.user_type
+    context = {'user_type': user_type}
+    if user_type == 'teacher':
+        students = CustomUser.objects.filter(user_type='student')
+        context['students'] = students
     return render(request, 'homepage/course_material_2.html', context)
 
 @login_required
 def course_material_3(request):
-    context = {}
+    user_type = request.user.user_type
+    context = {'user_type': user_type}
+    if user_type == 'teacher':
+        students = CustomUser.objects.filter(user_type='student')
+        context['students'] = students
     return render(request, 'homepage/course_material_3.html', context)
 
 @csrf_exempt
