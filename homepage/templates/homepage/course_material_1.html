@@ -90,6 +90,16 @@
     </ul>
 </nav>
 
+{% if user_type == 'teacher' %}
+<div id = "studentSelect">
+    <select>
+        {%for student in students %}
+            <option value="{{ student.Uni_ID }}">{{ student.username }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endif %}
+
 <div id = "chat">
     <div id = "chat-logs">
         <ul id="messages">
@@ -150,11 +160,19 @@
             e.preventDefault();
             currentLectureNumber = e.target.getAttribute('data-lecture-number'); // Get the lecture number from the button
             document.getElementById('chat').style.display = 'block';
+
+            document.getElementById('studentSelect').style.display = 'block';
+
             fetchChatLogs(currentLectureNumber);
         });
     });
 
-    
+    // When a student is slected from dropdown, open a chat room
+    const studentDropdown = document.getElementById('studentDropdown');
+    studentDropdown.addEventListener('change', (e) => {
+        const studentId = e.target.value;
+        socket.emit('open chat room', studentId);
+    });
 </script>
 
 <!-- Create a script for the chat -->
@@ -207,6 +225,19 @@
                 });
             });
     });
+
+    // When the server sends the chat history, add it to the list of messages
+    socket.on('chat history', (chatHistory) => {
+        const messageList = document.getElementById('messages');
+        messageList.innerHTML = '';
+        chatHistory.forEach(message =>{
+            const li = document.createElement('li');
+            li.textContent = message.content;
+            messagesList.appendChild(li);
+        
+        });
+    });
+    
 
     // When the server sends a message, add it to the list of messages
     socket.on('chat message', (msg) => {

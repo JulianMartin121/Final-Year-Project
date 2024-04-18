@@ -3,6 +3,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const mysql = require('mysql');
 const cors = require('cors');
+require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
@@ -25,10 +26,10 @@ let teacherAssignments = {};
 
 // Connect to the SQLite database and fetch teachers
 let db = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: '-BlueRay121-',
-    database: 'fypdatabase',
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
     multipleStatements: true
 });
 
@@ -66,6 +67,18 @@ io.on('connection', (socket) => {
         console.log('Assigned teacher id:', teacher.id)
     }
 
+    socket.on('open chat room', (studentID) => {
+        if(teacherAssignments[studentID] == socket.teacher.id){
+            db.query('SELECT * FROM chat_logs WHERE lectureNumber = ? ORDER BY timestamp DESC', [studentID], (err, results) => {
+                if (err){
+                    console.error(err.message);
+                    return;
+                }
+                socket.emit('chat history', results);
+            });
+        }
+    });
+
     // Broadcast the message to the teacher and student
     socket.on('chat message', (msg) => {
         console.log("Message received: ", msg.text);
@@ -73,8 +86,19 @@ io.on('connection', (socket) => {
 
         msg.receiver = socket.teacher.id;
 
-        io.to(socket.teacher.id).emit('chat message', msg);
-        socket.emit('chat message', msg);
+        // Fetch the username from the database
+        const queryUSER = 'SELECT username FROM accounts_customuser WHERE Uni_ID = ?';
+        db.query(queryUSER, [msg.sender], (error, results) => {
+            if (error){
+                console.error(error.message);
+                return;
+            }
+
+            msg.text = results[0].username + ': ' + msg.text;
+
+            io.to(socket.teacher.id).emit('chat message', msg);
+            socket.emit('chat message', msg);
+        });
 
         // Insert the message into chat logs
         const query = 'INSERT INTO chat_logs (lectureNumber, message, timestamp) VALUES (?, ?, ?)';
@@ -129,7 +153,7 @@ app.get('/chat_logs', (req, res) => {
             return;
         }
 
-        connection.query('SELECT * FROM chat_logs WHERE lectureNumber = ?', [lectureNumber], (err, results) => {
+        connection.query('SELECT * FROM chat_logs WHERE lectureNumber = ? ORDER BY timestamp ASC', [lectureNumber], (err, results) => {
             connection.release();
             if (err){
                 console.error(err.message);
@@ -141,6 +165,32 @@ app.get('/chat_logs', (req, res) => {
 
     });
 });
+
+app.get('/students', (req, res) => {
+    db.query('SELECT * FROM accounts_customuser WHERE user_type = "student"', (err, results) => {
+        if (err){
+            console.error(err.message);
+            return;
+        }
+
+        res.json(results);
+    });
+});
+
+app.get('/user_type', (req, res) => {
+    const uniID = req.session.Uni_ID;
+    console.log(`Uni ID: ${uniID}`);
+
+    db.query('SELECT user_type FROM accounts_customuser WHERE Uni_ID = ?', [uniID], (err, results) => {
+        if (err){
+            console.error(err.message);
+            return;
+        }
+
+        res.json(results[0].user_type);
+    });
+});
+
 
 server.listen(3000, () => {
     console.log('listening on *:3000');
