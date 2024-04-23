@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.http import JsonResponse
 from .models import CustomUser
 
+
 # Create your views here.
 
 def register_view(request):

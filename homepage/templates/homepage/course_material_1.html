@@ -128,6 +128,9 @@
     const sendButton = document.getElementById('send');
     const messagesList = document.getElementById('messages');
 
+    socket.emit('User Login', '{{user.Uni_ID}}');
+
+
     socket.on('connect', () => {
             console.log('Connected to server ', socket.connected);
     });
@@ -169,14 +172,23 @@
 
     // When a student is slected from dropdown, open a chat room
     const studentDropdown = document.getElementById('studentDropdown');
-    studentDropdown.addEventListener('change', (e) => {
-        const studentId = e.target.value;
-        socket.emit('open chat room', studentId);
-    });
+    if(studentDropdown){
+        studentDropdown.addEventListener('change', (e) => {
+            const studentId = e.target.value;
+            socket.emit('open chat room', studentId);
+        });
+    }
+</script>
+
+<script type = "text/javascript">
+    let user = {
+        'Uni_ID': '{{ Uni_ID }}'
+        };
 </script>
 
 <!-- Create a script for the chat -->
 <script>
+
     function addMessageToChat(message){
         const li = document.createElement('li');
         li.textContent = message;
@@ -186,7 +198,7 @@
     messageForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        fetch(`http://localhost:3000/teacher_assignment?chatId=${socket.id}`)
+        fetch(`http://localhost:3000/teacher_assignment?Uni_ID=${user.Uni_ID}`)
             .then(response => response.json())
             .then(data => {
                 const teacherId = data.teacherId;
@@ -214,7 +226,8 @@
                     const msg = {
                         text: formData.get('content'),
                         lectureNumber: formData.get('lectureNumber'),
-                        receiver: formData.get('receiver')
+                        receiver: formData.get('receiver'),
+                        sender: formData.get('sender')
                     };
 
                     socket.emit('chat message', msg);
@@ -244,6 +257,27 @@
         console.log('Received message:', msg);
         addMessageToChat(msg.text);
     });
+</script>
+
+
+<script>
+    // When the page loads, fetch the students assigned to the teacher
+    window.onload = function(){
+        const teacherId = "{{request.user.Uni_ID}}";
+
+        fetch(`http://localhost:3000/students_assigned_to_teacher?teacherId=${teacherId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Populate the dropdown menu with the students
+                const dropdown = document.getElementById('studentSelect');
+                for (let student of data) {
+                    const option = document.createElement('option');
+                    option.value = student.Uni_ID;
+                    option.text = student.username;
+                    dropdown.appendChild(option);
+                }
+            });
+    }
 </script>
 
 </html>

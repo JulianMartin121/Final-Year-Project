@@ -17,7 +17,7 @@ class CustomUser(AbstractUser):
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='student')
 
     # Field to store the University ID
-    Uni_ID = models.CharField(max_length=10, default='', unique=True)
+    Uni_ID = models.CharField(max_length=7, default='', unique=True)
 
     # Email field
     email = models.EmailField(_('email address'), unique=True)
