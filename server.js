@@ -22,7 +22,6 @@ const io = socketIo(server, {
 app.use(express.static('homepage/templates/homepage'));
 
 let teachers = [];
-let teacherAssignments = {};
 
 // Connect to the SQLite database and fetch teachers
 let db = mysql.createPool({
@@ -55,28 +54,77 @@ db.query('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, 
 
 io.on('connection', (socket) => {
     console.log('a user connected');
-    // Assign the student to a teacher with the least chats when they send the first message
-    if (!socket.teacher){
-        console.log('Assigning teacher to student');
-        const teacher = teachers.sort((a, b) => a.chats.length - b.chats.length)[0];
-        teacher.chats.push(socket);
-        socket.teacher = teacher;
 
-        // Store the teacher assigned to the student
-        teacherAssignments[socket.id] = teacher.id;
-        console.log('Assigned teacher id:', teacher.id)
-    }
+    let userUniID;
 
+    socket.on('User Login', (Uni_ID) => {
+        userUniID = Uni_ID;
+        console.log('User Uni ID:', userUniID);
+
+        // Fetch the user type from the database
+        db.query('SELECT user_type FROM accounts_customuser WHERE Uni_ID = ?', [userUniID], (err, results) => {
+            if (err){
+                console.error(err.message);
+                return;
+            }
+
+            const userType = results[0].user_type;
+
+            if(userType === 'student'){
+                db.query('SELECT teacher_id FROM teacher_assignments WHERE student_id = ?', [userUniID], (err, results) => {
+                    if (err){
+                        console.error(err.message);
+                        return;
+                    }
+
+                    if(results.length > 0){
+                        console.log('Student already assigned to teacher')
+                        const teacherId = results[0].teacher_id;
+                        const teacher = teachers.find(teacher => teacher.id === teacherId);
+                        teacher.chats.push(socket);
+                        socket.teacher = teacher;
+                    }else{
+                        console.log('Assigning teacher to student');
+                        const teacher = teachers.sort((a, b) => a.chats.length - b.chats.length)[0];
+                        teacher.chats.push(socket);
+                        socket.teacher = teacher;
+
+                        db.query('INSERT INTO teacher_assignments (teacher_id, student_id) VALUES (?, ?)', [teacher.id, userUniID], (err, results) => {
+                            if (err){
+                                console.error(err.message);
+                                return;
+                            }
+                            console.log('Teacher assigned to student');
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+
+    // Fetch the chat history between the teacher and student
     socket.on('open chat room', (studentID) => {
-        if(teacherAssignments[studentID] == socket.teacher.id){
-            db.query('SELECT * FROM chat_logs WHERE lectureNumber = ? ORDER BY timestamp DESC', [studentID], (err, results) => {
-                if (err){
-                    console.error(err.message);
-                    return;
-                }
-                socket.emit('chat history', results);
-            });
-        }
+        console.log('Opening chat room before if statement')
+        console.log('Student ID: ', studentID);
+        db.query('SELECT teacher_id FROM teacher_assignments WHERE student_id = ?', [studentID], (err, results) => {
+            if (err){
+                console.error('Error Message in chat room: ', err.message);
+                return;
+            }
+            if(results[0].teacher_id == socket.teacher.id){
+                console.log('if statement');
+                console.log('Student ID: ', studentID);
+                console.log('Teacher ID: ', socket.teacher.id);
+                db.query('SELECT * FROM homepage_message WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) ORDER BY timestamp DESC', [studentID, socket.teacher.id, socket.teacher.id, studentID], (err, results) => {
+                    if (err){
+                        console.error(err.message);
+                        return;
+                    }
+                    socket.emit('chat history', results);
+                });
+            }
+        });
     });
 
     // Broadcast the message to the teacher and student
@@ -87,7 +135,7 @@ io.on('connection', (socket) => {
         msg.receiver = socket.teacher.id;
 
         // Fetch the username from the database
-        const queryUSER = 'SELECT username FROM accounts_customuser WHERE Uni_ID = ?';
+        const queryUSER = 'SELECT id, username FROM accounts_customuser WHERE Uni_ID = ?';
         db.query(queryUSER, [msg.sender], (error, results) => {
             if (error){
                 console.error(error.message);
@@ -95,21 +143,40 @@ io.on('connection', (socket) => {
             }
 
             msg.text = results[0].username + ': ' + msg.text;
+            msg.sender = results[0].id;
+            console.log(msg.sender);
+
+            console.log('Username successful');
 
             io.to(socket.teacher.id).emit('chat message', msg);
             socket.emit('chat message', msg);
         });
 
-        // Insert the message into chat logs
-        const query = 'INSERT INTO chat_logs (lectureNumber, message, timestamp) VALUES (?, ?, ?)';
-        const params = [msg.lectureNumber, msg.text, new Date()];
-        db.query(query, params, (err, results) => {
-            if (err){
-                console.error(err.message);
+        const queryReceiver = 'SELECT id FROM accounts_customuser WHERE Uni_ID = ?';
+        db.query(queryReceiver, [msg.receiver], (error, results) => {
+            if (error){
+                console.error(error.message);
                 return;
             }
-            console.log('Message inserted into chat logs');
+            msg.receiver = results[0].id;
+
+            console.log(msg.receiver);
+            console.log(msg.sender);
+
+            console.log('Inserting message into homepage_message table');
+            const query = 'INSERT into homepage_message (content, timestamp, receiver_id, sender_id, lecture_number) VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?)';
+            const params = [msg.text, msg.receiver, msg.sender, parseInt(msg.lectureNumber)];
+    
+            db.query(query, params, (error, results) => {
+                if (error){
+                    console.error('Error message here: ', error.message);
+                    return;
+                }
+                console.log('Message inserted into homepage_message table');
+            });
         });
+
+        // Insert the message into homepage_message table
     });
 
     socket.on('disconnect', () => {
@@ -128,11 +195,17 @@ io.on('connection', (socket) => {
 
 // Create a new endpoint to get the teacher assigned to a student
 app.get('/teacher_assignment', (req, res) => {
-    const chatId = req.query.chatId;
-    console.log(`Chat ID: ${chatId}`);
-    const teacherId = teacherAssignments[chatId];
-    console.log(`Teacher ID: ${teacherId}`);
-    res.json({ teacherId });
+    const uniId = req.query.Uni_ID;
+    console.log(`Uni ID: ${uniId}`);
+    db.query('SELECT teacher_id FROM teacher_assignments WHERE student_id = ?', [uniId], (err, results) => {
+        if (err){
+            console.error(err.message);
+            return;
+        }
+        const teacherId = results[0].teacher_id;
+        console.log(`Teacher ID: ${teacherId}`);
+        res.json({ teacherId });
+    });
 });
 
 app.use(express.json());
@@ -153,7 +226,7 @@ app.get('/chat_logs', (req, res) => {
             return;
         }
 
-        connection.query('SELECT * FROM chat_logs WHERE lectureNumber = ? ORDER BY timestamp ASC', [lectureNumber], (err, results) => {
+        connection.query('SELECT * FROM homepage_message WHERE lecture_number = ? ORDER BY timestamp ASC', [lectureNumber], (err, results) => {
             connection.release();
             if (err){
                 console.error(err.message);
@@ -177,19 +250,27 @@ app.get('/students', (req, res) => {
     });
 });
 
-app.get('/user_type', (req, res) => {
-    const uniID = req.session.Uni_ID;
-    console.log(`Uni ID: ${uniID}`);
-
-    db.query('SELECT user_type FROM accounts_customuser WHERE Uni_ID = ?', [uniID], (err, results) => {
+app.get('/students_assigned_to_teacher', (req, res) => {
+    const teacherId = req.query.teacherId;
+    db.query('SELECT student_id FROM teacher_assignments WHERE teacher_id = ?', [teacherId], (err, results) => {
         if (err){
             console.error(err.message);
             return;
         }
-
-        res.json(results[0].user_type);
+        let studentsAssignedToTeacher = [];
+        for (let row of results){
+            db.query('SELECT * FROM accounts_customuser WHERE Uni_ID = ?', [row.student_id], (err, results) => {
+                if (err){
+                    console.error(err.message);
+                    return;
+                }
+                studentsAssignedToTeacher.push(results[0]);
+            });
+        }
+        res.json(studentsAssignedToTeacher);
     });
 });
+
 
 
 server.listen(3000, () => {

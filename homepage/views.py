@@ -45,7 +45,8 @@ def module3_home(request):
 @login_required
 def course_material_1(request):
     user_type = request.user.user_type
-    context = {'user_type': user_type}
+    uni_id = request.user.Uni_ID
+    context = {'user_type': user_type, 'Uni_ID': uni_id} 
     if user_type == 'teacher':
         students = CustomUser.objects.filter(user_type='student')
         context['students'] = students
@@ -54,7 +55,8 @@ def course_material_1(request):
 @login_required
 def course_material_2(request):
     user_type = request.user.user_type
-    context = {'user_type': user_type}
+    uni_id = request.user.Uni_ID
+    context = {'user_type': user_type, 'Uni_ID': uni_id} 
     if user_type == 'teacher':
         students = CustomUser.objects.filter(user_type='student')
         context['students'] = students
@@ -63,7 +65,8 @@ def course_material_2(request):
 @login_required
 def course_material_3(request):
     user_type = request.user.user_type
-    context = {'user_type': user_type}
+    uni_id = request.user.Uni_ID
+    context = {'user_type': user_type, 'Uni_ID': uni_id} 
     if user_type == 'teacher':
         students = CustomUser.objects.filter(user_type='student')
         context['students'] = students
