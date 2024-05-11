@@ -49,7 +49,7 @@
         <li class="dropdown lecture-card">
             <a href="#">Lecture1</a>
             <ul class="dropdown-content">
-                <li><a href="#" class="chat-button" data-lecture-number="1">Chat with your teacher</a></li>
+                <li><a href="#" class="chat-button" data-lecture-number="1">Live Chat</a></li>
                 <li class="dropdown">
                     <a href="#">Lecture 1.A</a>
                     <ul class="dropdown-content">
@@ -70,7 +70,7 @@
         <li class="dropdown lecture-card">
             <a href="#">Lecture2</a>
             <ul class="dropdown-content">
-                <li><a href="#" class="chat-button" data-lecture-number="2">Chat with your teacher</a></li>
+                <li><a href="#" class="chat-button" data-lecture-number="2">Live Chat</a></li>
                 <li class="dropdown">
                     <a href="#">Lecture 2.A</a>
                     <ul class="dropdown-content">
@@ -91,15 +91,18 @@
     </ul>
 </nav>
 
-{% if user_type == 'teacher' %}
-<div id = "studentSelect">
-    <select>
+
+<div id = "chatControls">
+    {% if user_type == 'teacher' %}
+    <select id="studentSelect">
+        <option value="" selected>Select a student</option>
         {%for student in students %}
             <option value="{{ student.Uni_ID }}">{{ student.username }}</option>
         {% endfor %}
     </select>
+    {% endif %}
+    <button id="endChatButton" onclick="endChatSession()">End Chat</button>
 </div>
-{% endif %}
 
 <div id = "chat">
     <div id = "chat-logs">
@@ -158,7 +161,17 @@
     function toggleChatBox(visible) {
         console.log('Chat box toggled');
         const chatBox = document.getElementById('chat');
-        chatBox.style.display = visible ? 'block' : 'none';
+        const chatControls = document.getElementById('chatControls');
+        if (visible) {
+            chatBox.style.display = 'block';
+            chatControls.style.display = 'flex';
+            if (userType === 'teacher') {
+                document.getElementById('studentSelect').value = '';
+            }
+        } else {
+            chatBox.style.display = 'none';
+            chatControls.style.display = 'none';
+        }
     }
 
 
@@ -181,8 +194,6 @@
     // Initiate chat and join room
     async function initiateChatAndJoinRoom(userType, studentId, lectureNumber) {
         try {
-            currentLectureNumber = lectureNumber;
-
             const response = await fetch(`http://localhost:3000/initiate_chat?studentId=${studentId}&lectureNumber=${lectureNumber}`);
             const data = await response.json();
             const { teacherId, roomName } = data;
@@ -212,6 +223,20 @@
         }
     }
 
+    async function initiateTeacherChat(studentId, lectureNumber) {
+        fetch(`http://localhost:3000/initiate_chat_teacher?teacherId=${userUniID}&studentId=${studentId}&lectureNumber=${lectureNumber}`)
+            .then(response => response.json())
+            .then(async data => {
+                const { roomName } = data;
+                socket.emit('join room', roomName);
+                currentRoom = roomName;
+                toggleChatBox(true);
+                await fetchChatLogs(roomName);
+            })
+            .catch(error => console.error('Error initiating teacher chat:', error));
+    }
+
+
     async function fetchChatLogs(room) {
         try {
             console.log('Fetching chat logs.');
@@ -219,6 +244,7 @@
             const messages = await response.json();
             messagesList.innerHTML = '';
 
+            console.log('Chat logs');
             messages.forEach(msg => {
             const messageElement = document.createElement('li');
             messageElement.textContent = msg.content;
@@ -229,8 +255,6 @@
             messagesList.innerHTML = '<li>Error loading messages</li>';
         }
     }
-
-
 
     // Display a message in the chat window
     function displayMessage(message) {
@@ -267,18 +291,25 @@
             console.log('Chat button clicked');
             e.preventDefault();
             const lectureNumber = this.getAttribute('data-lecture-number');
-            initiateChatAndJoinRoom(userType, userUniID, lectureNumber);
+            currentLectureNumber = lectureNumber;
+            if (userType == 'student'){
+                initiateChatAndJoinRoom(userType, userUniID, currentLectureNumber);
+            } else if (userType === 'teacher'){
+                toggleChatBox(true);
+            }
         });
     });
 
 
     // When a student is selected from dropdown, open a chat room and fetch the chat history
-    window.onload = function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load assigned students initially
         const teacherId = userUniID;
         fetch(`http://localhost:3000/students_assigned_to_teacher?teacherId=${teacherId}`)
             .then(response => response.json())
             .then(data => {
                 if (studentDropdown) {
+                    studentDropdown.innerHTML = '<option value="" selected>Select a student</option>'; // Reset and set default
                     data.forEach(student => {
                         const option = document.createElement('option');
                         option.value = student.Uni_ID;
@@ -286,12 +317,12 @@
                         studentDropdown.appendChild(option);
                     });
                 }
-            })
+            });
 
         // Listen for updates to the student list
         socket.on('update students', students => {
             const dropdown = document.getElementById('studentSelect');
-            dropdown.innerHTML = '';
+            dropdown.innerHTML = '<option value="" selected>Select a student</option>'; // Reset and set default
             students.forEach(student => {
                 const option = document.createElement('option');
                 option.value = student.Uni_ID;
@@ -299,7 +330,56 @@
                 dropdown.appendChild(option);
             });
         });
-};
+
+        // Event listener for student selection from the dropdown
+        studentDropdown.addEventListener('change', function() {
+            const studentId = this.value;
+            console.log(studentId);
+            const lectureNumber = currentLectureNumber;
+            console.log(lectureNumber);
+
+            if (currentRoom) {
+                socket.emit('leave room', currentRoom);
+                console.log(`Left room: ${currentRoom}`);
+            }
+
+            if (studentId && lectureNumber) {
+                console.log('Reinitating Teacher chat');
+                initiateTeacherChat(studentId, lectureNumber);
+            }
+        });
+    });
+
+
+function endChatSession() {
+    const roomParts = currentRoom.split('-');
+    if (roomParts.length < 4) {
+        alert('Invalid room information. Unable to end chat.');
+        return;
+    }
+
+    const studentId = roomParts[1];
+    const teacherId = roomParts[2];
+    const lectureNumber = roomParts[3];
+
+    console.log('Ending chat session:', studentId, teacherId, lectureNumber);
+
+    // Calling the server endpoint to end the chat session
+    fetch(`http://localhost:3000/end_chat?studentId=${studentId}&teacherId=${teacherId}&lectureNumber=${lectureNumber}`)
+        .then(response => {
+            if (response.ok) {
+                alert('Chat ended successfully.');
+                document.getElementById('chat').style.display = 'none';
+                currentRoom = '';
+
+                window.location.href = '/home';
+            } else {
+                alert('Failed to end chat.');
+            }
+        })
+        .catch(error => console.error('Error ending chat:', error));
+}
+
 </script>
 
 </html>
