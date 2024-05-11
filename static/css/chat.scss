@@ -13,7 +13,7 @@
     overflow: auto;
 }
 
-#chat-logs{
+#chat-logs {
     position: fixed;
     left: 45%;
     top: 300px;
@@ -24,7 +24,7 @@
     height: 400px;
 }
 
-#chat-form{
+#chat-form {
     position: fixed;
     left: 50%;
     top: 750px;
@@ -33,7 +33,6 @@
     padding: 20px;
     box-sizing: border-box;
     height: 100px;
-    
 }
 
 #messages {
@@ -42,7 +41,7 @@
     margin: 0;
 }
 
-#input {
+#message {
     width: 100%;
     margin-bottom: 10px;
 }

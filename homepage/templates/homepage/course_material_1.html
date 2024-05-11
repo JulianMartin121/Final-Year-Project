@@ -70,6 +70,7 @@
         <li class="dropdown lecture-card">
             <a href="#">Lecture2</a>
             <ul class="dropdown-content">
+                <li><a href="#" class="chat-button" data-lecture-number="2">Chat with your teacher</a></li>
                 <li class="dropdown">
                     <a href="#">Lecture 2.A</a>
                     <ul class="dropdown-content">
@@ -105,15 +106,17 @@
         <ul id="messages">
             {% for message in messages %}
                 <li>{{ message.content }}</li>
+            {% empty %}
+                <li>No messages yet.</li>
             {% endfor %}
-        </ul>
+        </ul>        
     </div>
     <div id = "chat-form">
         <form id="messageForm" method="post" action="{% url 'new_message' %}">
             {% csrf_token %}
             <input id="message" name="content" type="text" placeholder="Type your message here">
             <input type="hidden" name="sender" value="{{ user.Uni_ID }}">
-            <input type="hidden" id="id_reciever" name="receiver" value="">
+            <input type="hidden" id="id_receiver" name="receiver" value="">
             <button id="send" type="submit">Send</button>
         </form>
     </div>
@@ -121,163 +124,182 @@
 
 <script>
     let currentLectureNumber;
-    let lastMessageID = null;
+    let currentRoom = '';
     const socket = io('http://localhost:3000');
     const messageForm = document.getElementById('messageForm');
     const messageInput = document.getElementById('message');
     const sendButton = document.getElementById('send');
     const messagesList = document.getElementById('messages');
+    const studentDropdown = document.getElementById('studentSelect');
 
-    socket.emit('User Login', '{{user.Uni_ID}}');
+    const userType = '{{ user_type }}';
+    const userUniID = '{{ Uni_ID }}';
 
+    socket.emit('User Login', userUniID);
 
     socket.on('connect', () => {
-            console.log('Connected to server ', socket.connected);
+        console.log('Connected to server ', socket.connected);
     });
 
     socket.on('connect_error', (error) => {
         console.log('Connection error:', error);
     });
 
-    // Fetch chat logs for the current lecture
-    function fetchChatLogs(lectureNumber) {
-        fetch(`http://localhost:3000/chat_logs?lectureNumber=${lectureNumber}`)
-            .then(response => response.json())
-            .then(data => {
-                console.log('Chat logs 1:', data);
-                const messagesList = document.getElementById('messages');
-                messagesList.innerHTML = '';
-                data.forEach(message => {
-                    const li = document.createElement('li');
-                    li.textContent = message.content;
-                    messagesList.appendChild(li);
-                    lastMessageID = message.id;
-                });
-                console.log('Chat logs 2:', data);
-            });
-    }
-
-    // Chat function
-    document.querySelectorAll('.chat-button').forEach(button => {
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            currentLectureNumber = e.target.getAttribute('data-lecture-number'); // Get the lecture number from the button
-            document.getElementById('chat').style.display = 'block';
-
-            document.getElementById('studentSelect').style.display = 'block';
-
-            fetchChatLogs(currentLectureNumber);
-        });
-    });
-
-    // When a student is slected from dropdown, open a chat room
-    const studentDropdown = document.getElementById('studentDropdown');
-    if(studentDropdown){
-        studentDropdown.addEventListener('change', (e) => {
-            const studentId = e.target.value;
-            socket.emit('open chat room', studentId);
-        });
-    }
-</script>
-
-<script type = "text/javascript">
-    let user = {
-        'Uni_ID': '{{ Uni_ID }}'
-        };
-</script>
-
-<!-- Create a script for the chat -->
-<script>
-
-    function addMessageToChat(message){
-        const li = document.createElement('li');
-        li.textContent = message;
-        messagesList.appendChild(li);
-    }
-    // When the user submits the form, send the message to the server
-    messageForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-
-        fetch(`http://localhost:3000/teacher_assignment?Uni_ID=${user.Uni_ID}`)
-            .then(response => response.json())
-            .then(data => {
-                const teacherId = data.teacherId;
-                console.log("Assigned teacher ID:", teacherId);
-                document.getElementById('id_reciever').value = teacherId;
-                
-                // Create a new FormData object from the form
-                const formData = new FormData(messageForm);
-                formData.append('lectureNumber', currentLectureNumber);
-                console.log('Form data:', [...formData.entries()]);
-
-                // Send a POST request with the form data
-                fetch(messageForm.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    },
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // If the request was successful, add the new message to the list of messages
-                    console.log("Response data: ", data)
-
-                    const msg = {
-                        text: formData.get('content'),
-                        lectureNumber: formData.get('lectureNumber'),
-                        receiver: formData.get('receiver'),
-                        sender: formData.get('sender')
-                    };
-
-                    socket.emit('chat message', msg);
-
-                    messageInput.value = '';
-
-
-                });
-            });
-    });
-
-    // When the server sends the chat history, add it to the list of messages
-    socket.on('chat history', (chatHistory) => {
-        const messageList = document.getElementById('messages');
-        messageList.innerHTML = '';
-        chatHistory.forEach(message =>{
-            const li = document.createElement('li');
-            li.textContent = message.content;
-            messagesList.appendChild(li);
-        
-        });
-    });
-    
-
-    // When the server sends a message, add it to the list of messages
     socket.on('chat message', (msg) => {
-        console.log('Received message:', msg);
-        addMessageToChat(msg.text);
+        displayMessage(msg.content);
     });
-</script>
+
+    socket.on('new_student_assigned', data => {
+        if (userUniID === data.teacherId) {
+            updateStudentDropdown(data.studentId);
+        }
+    });
+
+    function toggleChatBox(visible) {
+        console.log('Chat box toggled');
+        const chatBox = document.getElementById('chat');
+        chatBox.style.display = visible ? 'block' : 'none';
+    }
 
 
-<script>
-    // When the page loads, fetch the students assigned to the teacher
-    window.onload = function(){
-        const teacherId = "{{request.user.Uni_ID}}";
+    // Update the student dropdown
+    function updateStudentDropdown(studentId) {
+        if (studentDropdown) {
+            fetch(`http://localhost:3000/student_info?studentId=${studentId}`)
+            .then(response => response.json())
+            .then(student => {
+                const option = document.createElement('option');
+                option.value = student.Uni_ID;
+                option.text = student.username;
+                studentDropdown.appendChild(option);
+            })
+            .catch(error => console.error('Error fetching new student info:', error));
+        }
+    }
 
+
+    // Initiate chat and join room
+    async function initiateChatAndJoinRoom(userType, studentId, lectureNumber) {
+        try {
+            currentLectureNumber = lectureNumber;
+
+            const response = await fetch(`http://localhost:3000/initiate_chat?studentId=${studentId}&lectureNumber=${lectureNumber}`);
+            const data = await response.json();
+            const { teacherId, roomName } = data;
+
+            if (!roomName) {
+                throw new Error('Room name is not defined');
+            }
+
+            socket.emit('join room', roomName);
+            currentRoom = roomName;
+
+            const receiverInput = document.getElementById('id_receiver');
+            if (userType === 'teacher') {
+                receiverInput.value = studentId;
+            } else {
+                receiverInput.value = teacherId;
+            }
+
+            messagesList.innerHTML = '';
+
+            await fetchChatLogs(roomName);
+
+            toggleChatBox(true);
+
+        } catch (error) {
+            console.error('Error during chat initiation:', error);
+        }
+    }
+
+    async function fetchChatLogs(room) {
+        try {
+            console.log('Fetching chat logs.');
+            const response = await fetch(`http://localhost:3000/chat_logs?room=${room}`);
+            const messages = await response.json();
+            messagesList.innerHTML = '';
+
+            messages.forEach(msg => {
+            const messageElement = document.createElement('li');
+            messageElement.textContent = msg.content;
+            messagesList.appendChild(messageElement);
+            });
+        } catch (error) {
+            console.error('Error loading chat logs:', error);
+            messagesList.innerHTML = '<li>Error loading messages</li>';
+        }
+    }
+
+
+
+    // Display a message in the chat window
+    function displayMessage(message) {
+        const messageElement = document.createElement('li');
+        messageElement.textContent = message;
+        messagesList.appendChild(messageElement);
+    }
+
+    // Event listener for sending messages
+    messageForm.addEventListener('submit', (e) => {
+        console.log('Message form submitted');
+        e.preventDefault();
+        if (!messageInput.value) return; // Prevent sending empty messages
+
+        // Prepare message data
+        const messageData = {
+            content: messageInput.value,
+            senderId: userUniID,
+            lectureNumber: currentLectureNumber,
+            roomId: currentRoom
+        };
+
+        // Send message to server
+        socket.emit('chat message', messageData);
+
+        // Clear input after send
+        messageInput.value = '';
+    });
+
+
+    // Event listener for chat button clicks
+    document.querySelectorAll('.chat-button').forEach(button => {
+        button.addEventListener('click', function(e) {
+            console.log('Chat button clicked');
+            e.preventDefault();
+            const lectureNumber = this.getAttribute('data-lecture-number');
+            initiateChatAndJoinRoom(userType, userUniID, lectureNumber);
+        });
+    });
+
+
+    // When a student is selected from dropdown, open a chat room and fetch the chat history
+    window.onload = function() {
+        const teacherId = userUniID;
         fetch(`http://localhost:3000/students_assigned_to_teacher?teacherId=${teacherId}`)
             .then(response => response.json())
             .then(data => {
-                // Populate the dropdown menu with the students
-                const dropdown = document.getElementById('studentSelect');
-                for (let student of data) {
-                    const option = document.createElement('option');
-                    option.value = student.Uni_ID;
-                    option.text = student.username;
-                    dropdown.appendChild(option);
+                if (studentDropdown) {
+                    data.forEach(student => {
+                        const option = document.createElement('option');
+                        option.value = student.Uni_ID;
+                        option.text = student.username;
+                        studentDropdown.appendChild(option);
+                    });
                 }
+            })
+
+        // Listen for updates to the student list
+        socket.on('update students', students => {
+            const dropdown = document.getElementById('studentSelect');
+            dropdown.innerHTML = '';
+            students.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.Uni_ID;
+                option.text = student.username;
+                dropdown.appendChild(option);
             });
-    }
+        });
+};
 </script>
 
 </html>
