@@ -1,15 +1,21 @@
-#studentSelect {
+#chatControls {
   display: none;
   position: fixed;
   left: 55%;
   top: 250px;
+  align-items: center;
+  gap: 10px; }
+
+#studentSelect {
   width: 200px;
   height: 30px;
   margin-bottom: 20px; }
 
+#endChatButton {
+  padding: 5px 10px; }
+
 #chat {
   display: none;
-  /* Initially hide the chat */
   overflow: auto; }
 
 #chat-logs {

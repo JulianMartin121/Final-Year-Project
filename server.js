@@ -32,8 +32,6 @@ let db = mysql.createPool({
     multipleStatements: true
 });
 
-console.log("Connected to the database.");
-
 // Fetch all teachers from the database
 db.query('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, results) => {
     if (err){
@@ -48,14 +46,10 @@ db.query('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, 
         });
     }
 
-    console.log(teachers);
-    console.log('Number of teachers:', teachers.length);
 });
 
 
 io.on('connection', (socket) => {
-    console.log('a user connected');
-
 
     socket.on('User Login', (Uni_ID) => {
         console.log('User ID:', Uni_ID);
@@ -68,13 +62,11 @@ io.on('connection', (socket) => {
             return;
         }
         socket.join(roomName);
-        console.log(`Joined room: ${roomName}`);
     });
     
 
     socket.on('leave room', (roomName) => {
         socket.leave(roomName);
-        console.log(`Left room: ${roomName}`);
     });
 
     // Broadcast the message to the teacher and student
@@ -84,9 +76,6 @@ io.on('connection', (socket) => {
             console.log("Received incomplete message data, ignoring.");
             return;
         }
-
-        console.log("Message received:", msg.content);
-        console.log("Chat message details:", msg);
 
         const roomParts = msg.roomId.split('-');
         let receiverId = roomParts[2];
@@ -121,15 +110,18 @@ io.on('connection', (socket) => {
                         console.error('Error inserting message:', error.message);
                         return;
                     }
-                    console.log('Message successfully inserted into homepage_message table');
                 });
             });
         });
     });
-    
+
+    socket.on('chat ended', (data) => {
+        const { studentId, teacherId, lectureNumber } = data;
+        const roomName = `room-${studentId}-${teacherId}-${lectureNumber}`;
+        socket.leave(roomName);
+    });
 
     socket.on('disconnect', () => {
-        console.log('user disconnected');
         teachers.forEach(teacher => {
             const index = teacher.chats.indexOf(socket);
             if (index > -1) {
@@ -148,14 +140,12 @@ function assignNewTeacherToStudent(studentId) {
 // Create a new endpoint to get the teacher assigned to a student
 app.get('/teacher_assignment', (req, res) => {
     const uniId = req.query.Uni_ID;
-    console.log(`Uni ID: ${uniId}`);
     db.query('SELECT teacher_id FROM teacher_assignments WHERE student_id = ?', [uniId], (err, results) => {
         if (err){
             console.error(err.message);
             return;
         }
         const teacherId = results[0].teacher_id;
-        console.log(`Teacher ID: ${teacherId}`);
         res.json({ teacherId });
     });
 });
@@ -164,15 +154,12 @@ app.use(express.json());
 
 app.post('/new_user', (req, res) => {
     const user = req.body;
-    console.log(user);  // Log the user data to the console
     res.status(200).send('User data received');
 });
 
 app.get('/chat_logs', (req, res) => {
-    console.log('Fetching chat logs');
     const room = req.query.room;
     let [prefix, studentId, teacherId, lectureNumber] = room.split('-');
-    console.log(studentId, teacherId, lectureNumber);
 
     const queryStudent = 'SELECT id, username FROM accounts_customuser WHERE Uni_ID = ?';
         db.query(queryStudent, [studentId], (error, results) => {
@@ -181,7 +168,6 @@ app.get('/chat_logs', (req, res) => {
                 return;
             }
             const studentId = results[0].id;
-            console.log("Student ID in chat logs: ", studentId)
 
             const queryTeacher = 'SELECT id FROM accounts_customuser WHERE Uni_ID = ?';
             db.query(queryTeacher, [teacherId], (error, results) => {
@@ -191,7 +177,6 @@ app.get('/chat_logs', (req, res) => {
                 }
 
                 teacherId = results[0].id;
-                console.log("Teacher ID in chat logs: ", teacherId)
 
                 db.query('SELECT * FROM homepage_message WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) AND lecture_number = ? ORDER BY timestamp ASC',
                     [studentId, teacherId, teacherId, studentId, lectureNumber], (err, results) => {
@@ -200,10 +185,6 @@ app.get('/chat_logs', (req, res) => {
                         return;
                     }
 
-                    console.log('Sending results');
-
-                    console.log("Results: ", results);
-                
                     res.json(results);
                     });
             });
@@ -225,24 +206,35 @@ app.get('/students', (req, res) => {
 
 app.get('/students_assigned_to_teacher', (req, res) => {
     const teacherId = req.query.teacherId;
+    console.log("Teacher id assignment: ", teacherId);
     db.query('SELECT student_id FROM teacher_assignments WHERE teacher_id = ?', [teacherId], (err, results) => {
-        if (err){
+        if (err) {
             console.error(err.message);
             return;
         }
+
+        if (results.length === 0) {
+            console.log("No students assigned to this teacher.");
+            return res.json([]);
+        }
+
         let studentsAssignedToTeacher = [];
-        for (let row of results){
-            db.query('SELECT * FROM accounts_customuser WHERE Uni_ID = ?', [row.student_id], (err, results) => {
-                if (err){
+        results.forEach(row => {
+            console.log("Assigned student ID: ", row.student_id);
+            db.query('SELECT Uni_ID, username FROM accounts_customuser WHERE Uni_ID = ?', [row.student_id], (err, result) => {
+                if (err) {
                     console.error(err.message);
                     return;
                 }
-                studentsAssignedToTeacher.push(results[0]);
+                studentsAssignedToTeacher.push(result[0]);
+                if (studentsAssignedToTeacher.length === results.length) {
+                    res.json(studentsAssignedToTeacher);
+                }
             });
-        }
-        res.json(studentsAssignedToTeacher);
+        });
     });
 });
+
 
 app.get('/teacher_id', (req, res) => {
     const studentId = req.query.studentId;
@@ -365,8 +357,35 @@ app.get('/initiate_chat', (req, res) => {
     });
 });
 
+app.get('/initiate_chat_teacher', (req, res) => {
+    const { teacherId, studentId, lectureNumber } = req.query;
+    if (!teacherId || !studentId || !lectureNumber) {
+        return res.status(400).send('Missing required parameters');
+    }
+
+    const roomName = `room-${studentId}-${teacherId}-${lectureNumber}`;
+    res.json({ roomName });
+
+});
 
 
+app.get('/end_chat', (req, res) => {
+    const studentId = req.query.studentId;
+    const teacherId = req.query.teacherId;
+    const lectureNumber = req.query.lectureNumber;
+    console.log("End chat - ", studentId, teacherId, lectureNumber);
+
+    db.query('DELETE FROM teacher_assignments WHERE student_id = ? AND teacher_id = ?', [studentId, teacherId], (err) => {
+        if (err) {
+            console.error('Error unassigning teacher:', err.message);
+            return res.status(500).send('Database error');
+        }
+
+        const roomName = `room-${studentId}-${teacherId}-${lectureNumber}`;
+        io.to(roomName).emit('chat ended', { studentId, teacherId, lectureNumber });
+        res.send('Chat and assignment ended successfully');
+    });
+});
 
 server.listen(3000, () => {
     console.log('listening on *:3000');
