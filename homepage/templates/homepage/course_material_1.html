@@ -102,6 +102,7 @@
     </select>
     {% endif %}
     <button id="endChatButton" onclick="endChatSession()">End Chat</button>
+    <button id="downloadChatLogsButton">Download Chat Logs</button>
 </div>
 
 <div id = "chat">
@@ -162,15 +163,18 @@
         console.log('Chat box toggled');
         const chatBox = document.getElementById('chat');
         const chatControls = document.getElementById('chatControls');
+        const downloadChatButton = document.getElementById('downloadChatLogsButton');
         if (visible) {
             chatBox.style.display = 'block';
             chatControls.style.display = 'flex';
+            downloadChatButton.style.display = 'inline-block';
             if (userType === 'teacher') {
                 document.getElementById('studentSelect').value = '';
             }
         } else {
             chatBox.style.display = 'none';
             chatControls.style.display = 'none';
+            downloadChatButton.style.display = 'none';
         }
     }
 
@@ -262,6 +266,15 @@
         messageElement.textContent = message;
         messagesList.appendChild(messageElement);
     }
+
+    document.getElementById('downloadChatLogsButton').addEventListener('click', function() {
+        if (!currentRoom) {
+            alert('No active chat session found!');
+            return;
+        }
+        
+        window.location.href = `http://localhost:3000/download_chat_logs?room=${encodeURIComponent(currentRoom)}`;
+    });
 
     // Event listener for sending messages
     messageForm.addEventListener('submit', (e) => {

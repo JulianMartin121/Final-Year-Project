@@ -102,6 +102,7 @@
     </select>
     {% endif %}
     <button id="endChatButton" onclick="endChatSession()">End Chat</button>
+    <button id="downloadChatLogsButton">Download Chat Logs</button>
 </div>
 
 <div id = "chat">
@@ -262,6 +263,15 @@
         messageElement.textContent = message;
         messagesList.appendChild(messageElement);
     }
+
+    document.getElementById('downloadChatLogsButton').addEventListener('click', function() {
+        if (!currentRoom) {
+            alert('No active chat session found!');
+            return;
+        }
+        
+        window.location.href = `http://localhost:3000/download_chat_logs?room=${encodeURIComponent(currentRoom)}`;
+    });
 
     // Event listener for sending messages
     messageForm.addEventListener('submit', (e) => {
