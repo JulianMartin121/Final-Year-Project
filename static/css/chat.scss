@@ -17,6 +17,11 @@
     padding: 5px 10px;
 }
 
+#downloadChatLogsButton{
+    padding: 5px 10px;
+
+}
+
 #chat {
     display: none;
     overflow: auto;
@@ -31,6 +36,7 @@
     padding: 20px;
     box-sizing: border-box;
     height: 400px;
+    overflow: auto;
 }
 
 #chat-form {
