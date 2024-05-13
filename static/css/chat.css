@@ -29,7 +29,8 @@
   border: 1px solid #000;
   padding: 20px;
   box-sizing: border-box;
-  height: 400px; }
+  height: 400px;
+  overflow: auto; }
 
 #chat-form {
   position: fixed;

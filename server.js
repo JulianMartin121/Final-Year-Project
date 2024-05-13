@@ -79,6 +79,12 @@ io.on('connection', (socket) => {
 
         const roomParts = msg.roomId.split('-');
         let receiverId = roomParts[2];
+        
+        if (receiverId === msg.senderId) {
+            receiverId = roomParts[1];
+        }
+
+        console.log("Room parts:", roomParts);
 
         const roomName = msg.roomId;
 
