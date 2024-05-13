@@ -1,0 +1,386 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load sass_tags %}
+
+{% block head %}
+<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+<link rel="stylesheet" type="text/css" href={% sass_src 'css/modnav.scss' %}>
+<link rel="stylesheet" type="text/css" href={% sass_src 'css/lecnav.scss' %}>
+<link rel="stylesheet" type="text/css" href={% sass_src 'css/chat.scss' %}>
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<!-- Create a script for when user presses course materials, it displays the dropdown menu -->
+<script>
+    $(document).ready(function() {
+        $('.lecture-card > .dropdown > a').click(function(e){
+            e.preventDefault();
+            $(this).next('.dropdown-content').toggle();
+        });
+    
+        $('.dropdown > a').click(function(e){
+            e.preventDefault();
+            $(this).next('.dropdown-content').toggle();
+        });
+    });
+</script>
+{% endblock %}
+
+
+{% block content %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Module 3</title>
+</head>
+<nav class="module-navbar">
+    <ul>
+      <li><a href="{% url 'module3' %}">Home</a></li>
+      <li class="dropdown">
+        <a href="#">Course Materials</a>
+        <ul class="dropdown-content">
+          <li><a href="{% url 'course_material_3' %}">Course Material</a></li>
+        </ul>
+      </li>
+    </ul>
+  </nav>
+  
+<nav class="lecture-navbar">
+    <ul>
+        <li class="dropdown lecture-card">
+            <a href="#">Lecture1</a>
+            <ul class="dropdown-content">
+                <li><a href="#" class="chat-button" data-lecture-number="1">Live Chat</a></li>
+                <li class="dropdown">
+                    <a href="#">Lecture 1.A</a>
+                    <ul class="dropdown-content">
+                        <li><a href="#">Example File 1</a></li>
+                        <li><a href="#">Example File 2</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="#">Lecture 1.B</a>
+                    <ul class="dropdown-content">
+                        <li><a href="#">Example File 1</a></li>
+                        <li><a href="#">Example File 2</a></li>
+                    </ul>
+                </li>
+                <li><a href="#">Example File 1</a></li>
+            </ul>
+        </li>
+        <li class="dropdown lecture-card">
+            <a href="#">Lecture2</a>
+            <ul class="dropdown-content">
+                <li><a href="#" class="chat-button" data-lecture-number="2">Live Chat</a></li>
+                <li class="dropdown">
+                    <a href="#">Lecture 2.A</a>
+                    <ul class="dropdown-content">
+                        <li><a href="#">Example File 1</a></li>
+                        <li><a href="#">Example File 2</a></li>
+                    </ul>
+                </li>
+                <li class="dropdown">
+                    <a href="#">Lecture 2.B</a>
+                    <ul class="dropdown-content">
+                        <li><a href="#">Example File 1</a></li>
+                        <li><a href="#">Example File 2</a></li>
+                    </ul>
+                </li>
+                <li><a href="#">Example File 1</a></li>
+            </ul>
+        </li>
+    </ul>
+</nav>
+
+
+<div id = "chatControls">
+    {% if user_type == 'teacher' %}
+    <select id="studentSelect">
+        <option value="" selected>Select a student</option>
+        {%for student in students %}
+            <option value="{{ student.Uni_ID }}">{{ student.username }}</option>
+        {% endfor %}
+    </select>
+    {% endif %}
+    <button id="endChatButton" onclick="endChatSession()">End Chat</button>
+</div>
+
+<div id = "chat">
+    <div id = "chat-logs">
+        <ul id="messages">
+            {% for message in messages %}
+                <li>{{ message.content }}</li>
+            {% empty %}
+                <li>No messages yet.</li>
+            {% endfor %}
+        </ul>        
+    </div>
+    <div id = "chat-form">
+        <form id="messageForm" method="post" action="{% url 'new_message' %}">
+            {% csrf_token %}
+            <input id="message" name="content" type="text" placeholder="Type your message here">
+            <input type="hidden" name="sender" value="{{ user.Uni_ID }}">
+            <input type="hidden" id="id_receiver" name="receiver" value="">
+            <button id="send" type="submit">Send</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let currentLectureNumber;
+    let currentRoom = '';
+    const socket = io('http://localhost:3000');
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('message');
+    const sendButton = document.getElementById('send');
+    const messagesList = document.getElementById('messages');
+    const studentDropdown = document.getElementById('studentSelect');
+
+    const userType = '{{ user_type }}';
+    const userUniID = '{{ Uni_ID }}';
+
+    socket.emit('User Login', userUniID);
+
+    socket.on('connect', () => {
+        console.log('Connected to server ', socket.connected);
+    });
+
+    socket.on('connect_error', (error) => {
+        console.log('Connection error:', error);
+    });
+
+    socket.on('chat message', (msg) => {
+        displayMessage(msg.content);
+    });
+
+    socket.on('new_student_assigned', data => {
+        if (userUniID === data.teacherId) {
+            updateStudentDropdown(data.studentId);
+        }
+    });
+
+    function toggleChatBox(visible) {
+        console.log('Chat box toggled');
+        const chatBox = document.getElementById('chat');
+        const chatControls = document.getElementById('chatControls');
+        if (visible) {
+            chatBox.style.display = 'block';
+            chatControls.style.display = 'flex';
+            if (userType === 'teacher') {
+                document.getElementById('studentSelect').value = '';
+            }
+        } else {
+            chatBox.style.display = 'none';
+            chatControls.style.display = 'none';
+        }
+    }
+
+
+    // Update the student dropdown
+    function updateStudentDropdown(studentId) {
+        if (studentDropdown) {
+            fetch(`http://localhost:3000/student_info?studentId=${studentId}`)
+            .then(response => response.json())
+            .then(student => {
+                const option = document.createElement('option');
+                option.value = student.Uni_ID;
+                option.text = student.username;
+                studentDropdown.appendChild(option);
+            })
+            .catch(error => console.error('Error fetching new student info:', error));
+        }
+    }
+
+
+    // Initiate chat and join room
+    async function initiateChatAndJoinRoom(userType, studentId, lectureNumber) {
+        try {
+            const response = await fetch(`http://localhost:3000/initiate_chat?studentId=${studentId}&lectureNumber=${lectureNumber}`);
+            const data = await response.json();
+            const { teacherId, roomName } = data;
+
+            if (!roomName) {
+                throw new Error('Room name is not defined');
+            }
+
+            socket.emit('join room', roomName);
+            currentRoom = roomName;
+
+            const receiverInput = document.getElementById('id_receiver');
+            if (userType === 'teacher') {
+                receiverInput.value = studentId;
+            } else {
+                receiverInput.value = teacherId;
+            }
+
+            messagesList.innerHTML = '';
+
+            await fetchChatLogs(roomName);
+
+            toggleChatBox(true);
+
+        } catch (error) {
+            console.error('Error during chat initiation:', error);
+        }
+    }
+
+    async function initiateTeacherChat(studentId, lectureNumber) {
+        fetch(`http://localhost:3000/initiate_chat_teacher?teacherId=${userUniID}&studentId=${studentId}&lectureNumber=${lectureNumber}`)
+            .then(response => response.json())
+            .then(async data => {
+                const { roomName } = data;
+                socket.emit('join room', roomName);
+                currentRoom = roomName;
+                toggleChatBox(true);
+                await fetchChatLogs(roomName);
+            })
+            .catch(error => console.error('Error initiating teacher chat:', error));
+    }
+
+
+    async function fetchChatLogs(room) {
+        try {
+            console.log('Fetching chat logs.');
+            const response = await fetch(`http://localhost:3000/chat_logs?room=${room}`);
+            const messages = await response.json();
+            messagesList.innerHTML = '';
+
+            console.log('Chat logs');
+            messages.forEach(msg => {
+            const messageElement = document.createElement('li');
+            messageElement.textContent = msg.content;
+            messagesList.appendChild(messageElement);
+            });
+        } catch (error) {
+            console.error('Error loading chat logs:', error);
+            messagesList.innerHTML = '<li>Error loading messages</li>';
+        }
+    }
+
+    // Display a message in the chat window
+    function displayMessage(message) {
+        const messageElement = document.createElement('li');
+        messageElement.textContent = message;
+        messagesList.appendChild(messageElement);
+    }
+
+    // Event listener for sending messages
+    messageForm.addEventListener('submit', (e) => {
+        console.log('Message form submitted');
+        e.preventDefault();
+        if (!messageInput.value) return; // Prevent sending empty messages
+
+        // Prepare message data
+        const messageData = {
+            content: messageInput.value,
+            senderId: userUniID,
+            lectureNumber: currentLectureNumber,
+            roomId: currentRoom
+        };
+
+        // Send message to server
+        socket.emit('chat message', messageData);
+
+        // Clear input after send
+        messageInput.value = '';
+    });
+
+
+    // Event listener for chat button clicks
+    document.querySelectorAll('.chat-button').forEach(button => {
+        button.addEventListener('click', function(e) {
+            console.log('Chat button clicked');
+            e.preventDefault();
+            const lectureNumber = this.getAttribute('data-lecture-number');
+            currentLectureNumber = lectureNumber;
+            if (userType == 'student'){
+                initiateChatAndJoinRoom(userType, userUniID, currentLectureNumber);
+            } else if (userType === 'teacher'){
+                toggleChatBox(true);
+            }
+        });
+    });
+
+
+    // When a student is selected from dropdown, open a chat room and fetch the chat history
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load assigned students initially
+        const teacherId = userUniID;
+        fetch(`http://localhost:3000/students_assigned_to_teacher?teacherId=${teacherId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (studentDropdown) {
+                    studentDropdown.innerHTML = '<option value="" selected>Select a student</option>'; // Reset and set default
+                    data.forEach(student => {
+                        const option = document.createElement('option');
+                        option.value = student.Uni_ID;
+                        option.text = student.username;
+                        studentDropdown.appendChild(option);
+                    });
+                }
+            });
+
+        // Listen for updates to the student list
+        socket.on('update students', students => {
+            const dropdown = document.getElementById('studentSelect');
+            dropdown.innerHTML = '<option value="" selected>Select a student</option>'; // Reset and set default
+            students.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.Uni_ID;
+                option.text = student.username;
+                dropdown.appendChild(option);
+            });
+        });
+
+        // Event listener for student selection from the dropdown
+        studentDropdown.addEventListener('change', function() {
+            const studentId = this.value;
+            console.log(studentId);
+            const lectureNumber = currentLectureNumber;
+            console.log(lectureNumber);
+
+            if (currentRoom) {
+                socket.emit('leave room', currentRoom);
+                console.log(`Left room: ${currentRoom}`);
+            }
+
+            if (studentId && lectureNumber) {
+                console.log('Reinitating Teacher chat');
+                initiateTeacherChat(studentId, lectureNumber);
+            }
+        });
+    });
+
+
+function endChatSession() {
+    const roomParts = currentRoom.split('-');
+    if (roomParts.length < 4) {
+        alert('Invalid room information. Unable to end chat.');
+        return;
+    }
+
+    const studentId = roomParts[1];
+    const teacherId = roomParts[2];
+    const lectureNumber = roomParts[3];
+
+    console.log('Ending chat session:', studentId, teacherId, lectureNumber);
+
+    // Calling the server endpoint to end the chat session
+    fetch(`http://localhost:3000/end_chat?studentId=${studentId}&teacherId=${teacherId}&lectureNumber=${lectureNumber}`)
+        .then(response => {
+            if (response.ok) {
+                alert('Chat ended successfully.');
+                document.getElementById('chat').style.display = 'none';
+                currentRoom = '';
+
+                window.location.href = '/home';
+            } else {
+                alert('Failed to end chat.');
+            }
+        })
+        .catch(error => console.error('Error ending chat:', error));
+}
+
+</script>
+
+</html>
+{% endblock content %}
