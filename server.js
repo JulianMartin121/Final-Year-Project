@@ -191,8 +191,6 @@ app.get('/chat_logs', (req, res) => {
     });
 });
 
-
-
 app.get('/students', (req, res) => {
     db.query('SELECT * FROM accounts_customuser WHERE user_type = "student"', (err, results) => {
         if (err){
@@ -387,6 +385,77 @@ app.get('/end_chat', (req, res) => {
     });
 });
 
+app.get('/download_chat_logs', (req, res) => {
+    const room = req.query.room;
+
+    if (!room) {
+        return res.status(400).send('Room parameter is required.');
+    }
+
+
+    let [prefix, studentUniId, teacherUniId, lectureNumber] = room.split('-');
+
+    if (!studentUniId || !teacherUniId) {
+        return res.status(400).send('Invalid room format. Expected format: prefix-studentId-teacherId-lectureNumber.');
+    }
+
+    const queryStudent = 'SELECT id FROM accounts_customuser WHERE Uni_ID = ?';
+    db.query(queryStudent, [studentUniId], (err, studentResults) => {
+        if (err) {
+            console.error('Error fetching student ID:', err.message);
+            return res.status(500).send('Failed to retrieve student ID');
+        }
+
+        if (studentResults.length === 0) {
+            return res.status(404).send('Student not found');
+        }
+
+        const studentId = studentResults[0].id;
+
+        // Query to get the teacher ID
+        const queryTeacher = 'SELECT id FROM accounts_customuser WHERE Uni_ID = ?';
+        db.query(queryTeacher, [teacherUniId], (err, teacherResults) => {
+            if (err) {
+                console.error('Error fetching teacher ID:', err.message);
+                return res.status(500).send('Failed to retrieve teacher ID');
+            }
+
+            if (teacherResults.length === 0) {
+                return res.status(404).send('Teacher not found');
+            }
+
+            const teacherId = teacherResults[0].id;
+
+            // Query to get chat logs between the student and the teacher
+            const queryChatLogs = `
+                SELECT content, timestamp 
+                FROM homepage_message 
+                WHERE (sender_id = ? AND receiver_id = ?) 
+                   OR (sender_id = ? AND receiver_id = ?) 
+                ORDER BY timestamp ASC`;
+
+            db.query(queryChatLogs, [studentId, teacherId, teacherId, studentId], (err, chatResults) => {
+                if (err) {
+                    console.error('Error querying chat logs:', err.message);
+                    return res.status(500).send('Failed to retrieve chat logs');
+                }
+
+                let fileContents = 'Timestamp, Content\n';
+                chatResults.forEach(msg => {
+                    fileContents += `${msg.timestamp}, "${msg.content.replace(/"/g, '""')}"\n`;
+                });
+
+                res.setHeader('Content-Type', 'text/csv');
+                res.setHeader('Content-Disposition', `attachment; filename="chat-logs.csv"`);
+                res.send(fileContents);
+            });
+        });
+    });
+});
+
+
 server.listen(3000, () => {
     console.log('listening on *:3000');
 });
+
+module.exports = {app, server, io, db};
