@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "mocha --reporter spec"
+    "test": "jest --detectOpenHandles"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +16,11 @@
     "mysql": "^2.18.1",
     "node-fetch": "^2.7.0",
     "socket.io": "^4.7.4",
+    "socket.io-client": "^4.7.5",
     "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
   }
 }
