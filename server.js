@@ -62,11 +62,13 @@ io.on('connection', (socket) => {
             return;
         }
         socket.join(roomName);
+        socket.emit('joined room', roomName);
     });
     
 
     socket.on('leave room', (roomName) => {
         socket.leave(roomName);
+        socket.emit('left room', roomName);
     });
 
     // Broadcast the message to the teacher and student
@@ -125,6 +127,7 @@ io.on('connection', (socket) => {
         const { studentId, teacherId, lectureNumber } = data;
         const roomName = `room-${studentId}-${teacherId}-${lectureNumber}`;
         socket.leave(roomName);
+        socket.emit('left room', roomName);
     });
 
     socket.on('disconnect', () => {
@@ -464,4 +467,15 @@ server.listen(3000, () => {
     console.log('listening on *:3000');
 });
 
-module.exports = {app, server, io, db};
+const closeDbConnection = () => {
+    return new Promise((resolve, reject) => {
+      db.end((err) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve();
+      });
+    });
+  };
+
+module.exports = {app, server, io, closeDbConnection};
