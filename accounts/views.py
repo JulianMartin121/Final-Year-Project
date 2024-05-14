@@ -43,6 +43,7 @@ def login_view(request):
                 login(request, user)
                 return redirect('home')
             else:
+                form.add_error(None, "Invalid credentials. Please try again.")
                 return render(request, 'accounts/login.html', {'form': form})
 
     else:
