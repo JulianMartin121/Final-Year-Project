@@ -10,6 +10,7 @@ const server = http.createServer(app);
 
 app.use(cors());
 
+// Create a new instance of Socket.IO and pass the server object
 const io = socketIo(server, {
   cors: {
     origin: "*",  // Allow requests from any origin
@@ -49,8 +50,9 @@ db.query('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, 
 });
 
 
+// Listen for incoming connections
 io.on('connection', (socket) => {
-
+    // Log the connection
     socket.on('User Login', (Uni_ID) => {
         console.log('User ID:', Uni_ID);
     });
@@ -65,7 +67,7 @@ io.on('connection', (socket) => {
         socket.emit('joined room', roomName);
     });
     
-
+    // Leave a specific room
     socket.on('leave room', (roomName) => {
         socket.leave(roomName);
         socket.emit('left room', roomName);
@@ -85,8 +87,6 @@ io.on('connection', (socket) => {
         if (receiverId === msg.senderId) {
             receiverId = roomParts[1];
         }
-
-        console.log("Room parts:", roomParts);
 
         const roomName = msg.roomId;
 
@@ -109,8 +109,10 @@ io.on('connection', (socket) => {
 
                 receiverId = results[0].id;
 
+                // Emit the message to the room
                 io.to(roomName).emit('chat message', msg);
 
+                // Insert the message into the database
                 const insertQuery = 'INSERT INTO homepage_message (content, timestamp, receiver_id, sender_id, lecture_number) VALUES (?, CURRENT_TIMESTAMP, ?, ?, ?)';
                 const params = [msg.content, receiverId, senderId, parseInt(roomParts[3])];
                 db.query(insertQuery, params, (error) => {
@@ -123,6 +125,7 @@ io.on('connection', (socket) => {
         });
     });
 
+    // End the chat and leave the room
     socket.on('chat ended', (data) => {
         const { studentId, teacherId, lectureNumber } = data;
         const roomName = `room-${studentId}-${teacherId}-${lectureNumber}`;
@@ -130,6 +133,7 @@ io.on('connection', (socket) => {
         socket.emit('left room', roomName);
     });
 
+    // Handle disconnections
     socket.on('disconnect', () => {
         teachers.forEach(teacher => {
             const index = teacher.chats.indexOf(socket);
@@ -140,6 +144,7 @@ io.on('connection', (socket) => {
     });
 });
 
+// Fetch all teachers from the database
 app.get('/teacher_assignment', (req, res) => {
     const uniId = req.query.Uni_ID;
     db.query('SELECT teacher_id FROM teacher_assignments WHERE student_id = ?', [uniId], (err, results) => {
@@ -154,11 +159,13 @@ app.get('/teacher_assignment', (req, res) => {
 
 app.use(express.json());
 
+// Create a new user
 app.post('/new_user', (req, res) => {
     const user = req.body;
     res.status(200).send('User data received');
 });
 
+// Fetch all teachers from the database
 app.get('/chat_logs', (req, res) => {
     const room = req.query.room;
     let [prefix, studentId, teacherId, lectureNumber] = room.split('-');
@@ -180,6 +187,7 @@ app.get('/chat_logs', (req, res) => {
 
                 teacherId = results[0].id;
 
+                // Fetch chat logs between the student and the teacher
                 db.query('SELECT * FROM homepage_message WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) AND lecture_number = ? ORDER BY timestamp ASC',
                     [studentId, teacherId, teacherId, studentId, lectureNumber], (err, results) => {
                     if (err) {
@@ -193,6 +201,7 @@ app.get('/chat_logs', (req, res) => {
     });
 });
 
+// Fetch all teachers from the database
 app.get('/students', (req, res) => {
     db.query('SELECT * FROM accounts_customuser WHERE user_type = "student"', (err, results) => {
         if (err){
@@ -204,6 +213,7 @@ app.get('/students', (req, res) => {
     });
 });
 
+// Fetch all teachers from the database who are assigned to a teacher
 app.get('/students_assigned_to_teacher', (req, res) => {
     const teacherId = req.query.teacherId;
     db.query('SELECT student_id FROM teacher_assignments WHERE teacher_id = ?', [teacherId], (err, results) => {
@@ -235,7 +245,7 @@ app.get('/students_assigned_to_teacher', (req, res) => {
     });
 });
 
-
+// Get teacher ID
 app.get('/teacher_id', (req, res) => {
     const studentId = req.query.studentId;
 
@@ -257,6 +267,7 @@ app.get('/teacher_id', (req, res) => {
     });
 });
 
+// Get student ID
 app.get('/student_id', (req, res) => {
     const teacherId = req.query.teacherId;
 
@@ -278,6 +289,7 @@ app.get('/student_id', (req, res) => {
     });
 });
 
+// Get assigned students
 app.get('/assigned_students', (req, res) => {
     const teacherId = req.query.teacherId;
     db.query('SELECT student_id FROM teacher_assignments WHERE teacher_id = ?', [teacherId], (err, results) => {
@@ -299,6 +311,7 @@ app.get('/assigned_students', (req, res) => {
     });
 });
 
+// Get student info
 app.get('/student_info', (req, res) => {
     const studentId = req.query.studentId;
     db.query('SELECT Uni_ID, username FROM accounts_customuser WHERE Uni_ID = ?', [studentId], (err, results) => {
@@ -399,7 +412,7 @@ app.get('/initiate_chat', (req, res) => {
 });
 
 
-
+// Initiate chat between a student and an assigned or newly assigned teacher
 app.get('/initiate_chat_teacher', (req, res) => {
     const { teacherId, studentId, lectureNumber } = req.query;
     if (!teacherId || !studentId || !lectureNumber) {
@@ -411,7 +424,7 @@ app.get('/initiate_chat_teacher', (req, res) => {
 
 });
 
-
+// End chat between a student and a teacher
 app.get('/end_chat', (req, res) => {
     const studentId = req.query.studentId;
     const teacherId = req.query.teacherId;
@@ -429,7 +442,7 @@ app.get('/end_chat', (req, res) => {
         res.send('Chat and assignment ended successfully');
     });
 });
-
+// Download chat logs
 app.get('/download_chat_logs', (req, res) => {
     const room = req.query.room;
 
@@ -498,11 +511,12 @@ app.get('/download_chat_logs', (req, res) => {
     });
 });
 
-
+// Server listen on port 3000
 server.listen(3000, () => {
     console.log('listening on *:3000');
 });
 
+// Close the database connection
 const closeDbConnection = () => {
     return new Promise((resolve, reject) => {
       db.end((err) => {
@@ -514,4 +528,5 @@ const closeDbConnection = () => {
     });
   };
 
+  // Export the app, server, and socket.io objects
 module.exports = {app, server, io, closeDbConnection};

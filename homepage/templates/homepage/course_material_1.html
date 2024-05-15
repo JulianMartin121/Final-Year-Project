@@ -158,7 +158,8 @@
             updateStudentDropdown(data.studentId);
         }
     });
-
+    
+    // Toggle chat box visibility
     function toggleChatBox(visible) {
         console.log('Chat box toggled');
         const chatBox = document.getElementById('chat');
@@ -226,7 +227,7 @@
             console.error('Error during chat initiation:', error);
         }
     }
-
+    // Initiate chat and join room for teacher
     async function initiateTeacherChat(studentId, lectureNumber) {
         fetch(`http://localhost:3000/initiate_chat_teacher?teacherId=${userUniID}&studentId=${studentId}&lectureNumber=${lectureNumber}`)
             .then(response => response.json())
@@ -240,7 +241,7 @@
             .catch(error => console.error('Error initiating teacher chat:', error));
     }
 
-
+    // Fetch chat logs for the given room
     async function fetchChatLogs(room) {
         try {
             console.log('Fetching chat logs.');
