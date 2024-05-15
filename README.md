@@ -50,6 +50,12 @@ To set up the tables:
 py manage.py migrate
 ```
 
+You may also need to run this command below beforehand
+```sh
+py manage.py makemigrations
+``` 
+
+
 
 ## Running the project
 
