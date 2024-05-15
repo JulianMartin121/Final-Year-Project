@@ -42,7 +42,7 @@ class AccountsViewsTests(TestCase):
     @patch('accounts.signals.requests.post')
     def test_login_view_post_valid(self, mock_post):
         response = self.client.post(self.login_url, {'username': 'testuser', 'password': 'Julian123'})
-        self.assertEqual(response.status_code, 302)  # Redirect after successful login
+        self.assertEqual(response.status_code, 302) 
         self.assertRedirects(response, self.home_url)
 
     @patch('accounts.signals.requests.post')
@@ -56,7 +56,7 @@ class AccountsViewsTests(TestCase):
     def test_logout_view(self, mock_post):
         self.client.login(username='testuser', password='Julian123')
         response = self.client.get(self.logout_url)
-        self.assertEqual(response.status_code, 302)  # Redirect after logout
+        self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, self.home_url)
 
     @patch('accounts.signals.requests.post')
@@ -69,7 +69,7 @@ class AccountsViewsTests(TestCase):
     @patch('accounts.signals.requests.post')
     def test_profile_view_unauthenticated(self, mock_post):
         response = self.client.get(self.profile_url)
-        self.assertEqual(response.status_code, 302)  # Redirect to login if not authenticated
+        self.assertEqual(response.status_code, 302)
         self.assertRedirects(response, f'{reverse("login")}?next={self.profile_url}')
 
 
@@ -79,7 +79,6 @@ class SignalsTests(TestCase):
     
     @patch('accounts.signals.requests.post')
     def test_send_user_data_signal(self, mock_post):
-        # Create a new user which should trigger the signal
         user = User.objects.create_user(
             username='testuser', 
             password='testpassword', 
@@ -88,7 +87,6 @@ class SignalsTests(TestCase):
             Uni_ID='123456'
         )
 
-        # Check if the signal sent the correct data
         expected_data = {
             'user_type': 'student',
             'username': 'testuser',
@@ -96,14 +94,11 @@ class SignalsTests(TestCase):
             'email': 'testuser@example.com'
         }
         
-        # Ensure that the mock_post was called once
         self.assertTrue(mock_post.called)
         self.assertEqual(mock_post.call_count, 1)
 
-        # Get the actual data sent in the post request
         actual_data = json.loads(mock_post.call_args[1]['data'])
 
-        # Check if the actual data matches the expected data
         self.assertEqual(actual_data, expected_data)
         self.assertEqual(mock_post.call_args[1]['headers'], {'Content-Type': 'application/json'})
 
