@@ -140,13 +140,6 @@ io.on('connection', (socket) => {
     });
 });
 
-function assignNewTeacherToStudent(studentId) {
-    const teacher = teachers.sort((a, b) => a.chats.length - b.chats.length)[0];
-    teacher.chats.push(studentId);
-    return teacher.id;
-}
-
-// Create a new endpoint to get the teacher assigned to a student
 app.get('/teacher_assignment', (req, res) => {
     const uniId = req.query.Uni_ID;
     db.query('SELECT teacher_id FROM teacher_assignments WHERE student_id = ?', [uniId], (err, results) => {
@@ -213,7 +206,6 @@ app.get('/students', (req, res) => {
 
 app.get('/students_assigned_to_teacher', (req, res) => {
     const teacherId = req.query.teacherId;
-    console.log("Teacher id assignment: ", teacherId);
     db.query('SELECT student_id FROM teacher_assignments WHERE teacher_id = ?', [teacherId], (err, results) => {
         if (err) {
             console.error(err.message);
@@ -233,6 +225,7 @@ app.get('/students_assigned_to_teacher', (req, res) => {
                     console.error(err.message);
                     return;
                 }
+                console.log("Assigned student: ", result[0]);
                 studentsAssignedToTeacher.push(result[0]);
                 if (studentsAssignedToTeacher.length === results.length) {
                     res.json(studentsAssignedToTeacher);
@@ -327,42 +320,85 @@ app.get('/initiate_chat', (req, res) => {
         return res.status(400).json({ error: 'Missing required parameters' });
     }
 
-    // Check for existing teacher assignment
-    db.query('SELECT teacher_id FROM teacher_assignments WHERE student_id = ?', [studentId], (err, results) => {
+    // Fetch all teachers from the accounts_customuser database
+    db.query('SELECT * FROM accounts_customuser WHERE user_type = "teacher"', (err, teachersResults) => {
         if (err) {
-            console.error('Error checking for assigned teacher:', err.message);
+            console.error(err.message);
             return res.status(500).send('Database error');
         }
 
-        let teacherId;
-
-        if (results.length > 0) {
-            // Student already has an assigned teacher
-            teacherId = results[0].teacher_id;
-        } else {
-            // Assign a new teacher if no assignment found
-            if (teachers.length === 0) {
-                return res.status(500).send('No available teachers');
-            }
-
-            teacherId = assignNewTeacherToStudent(studentId);
-
-            // Store the new teacher-student assignment
-            db.query('INSERT INTO teacher_assignments (teacher_id, student_id) VALUES (?, ?)', [teacherId, studentId], (err) => {
-                if (err) {
-                    console.error('Error assigning new teacher:', err.message);
-                    return res.status(500).send('Failed to assign teacher');
-                }
-                // Emit an event to notify that a new student is assigned
-                io.emit('new_student_assigned', { teacherId, studentId });
-            });
+        if (teachersResults.length === 0) {
+            return res.status(500).send('No available teachers');
         }
 
-        // Create the room name using student, teacher, and lecture number
-        const roomName = `room-${studentId}-${teacherId}-${lectureNumber}`;
-        res.json({ teacherId, roomName });
+        // Initialize the teachers array
+        let teachers = teachersResults.map(row => ({
+            id: row.Uni_ID,
+            studentCount: 0
+        }));
+
+        // Fetch teacher assignments to count students per teacher
+        db.query('SELECT teacher_id, COUNT(student_id) AS student_count FROM teacher_assignments GROUP BY teacher_id', (err, assignmentResults) => {
+            if (err) {
+                console.error('Error fetching teacher assignments:', err.message);
+                return res.status(500).send('Database error');
+            }
+
+            // Update the teachers array with the number of students assigned
+            assignmentResults.forEach(assignment => {
+                const teacher = teachers.find(t => t.id === assignment.teacher_id);
+                if (teacher) {
+                    teacher.studentCount = assignment.student_count;
+                }
+            });
+
+            // Sort teachers by the number of students assigned
+            teachers.sort((a, b) => a.studentCount - b.studentCount);
+
+            // Check for existing teacher assignment
+            db.query('SELECT teacher_id FROM teacher_assignments WHERE student_id = ?', [studentId], (err, results) => {
+                if (err) {
+                    console.error('Error checking for assigned teacher:', err.message);
+                    return res.status(500).send('Database error');
+                }
+
+                let teacherId;
+
+                if (results.length > 0) {
+                    // Student already has an assigned teacher
+                    teacherId = results[0].teacher_id;
+                } else {
+                    // Assign a new teacher if no assignment found
+                    teacherId = teachers[0].id;
+
+                    console.log('Assigned teacher:', teacherId, 'to student:', studentId);
+
+                    // Store the new teacher-student assignment
+                    db.query('INSERT INTO teacher_assignments (teacher_id, student_id) VALUES (?, ?)', [teacherId, studentId], (err) => {
+                        if (err) {
+                            console.error('Error assigning new teacher:', err.message);
+                            return res.status(500).send('Failed to assign teacher');
+                        }
+                        // Emit an event to notify that a new student is assigned
+                        io.emit('new_student_assigned', { teacherId, studentId });
+
+                        // Create the room name using student, teacher, and lecture number
+                        const roomName = `room-${studentId}-${teacherId}-${lectureNumber}`;
+                        res.json({ teacherId, roomName });
+                    });
+                }
+
+                // If the student already has a teacher assigned, create the room name
+                if (results.length > 0) {
+                    const roomName = `room-${studentId}-${teacherId}-${lectureNumber}`;
+                    res.json({ teacherId, roomName });
+                }
+            });
+        });
     });
 });
+
+
 
 app.get('/initiate_chat_teacher', (req, res) => {
     const { teacherId, studentId, lectureNumber } = req.query;
