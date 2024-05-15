@@ -224,6 +224,7 @@
         }
     }
 
+    // Initiate chat with a student as a teacher
     async function initiateTeacherChat(studentId, lectureNumber) {
         fetch(`http://localhost:3000/initiate_chat_teacher?teacherId=${userUniID}&studentId=${studentId}&lectureNumber=${lectureNumber}`)
             .then(response => response.json())
@@ -238,6 +239,7 @@
     }
 
 
+    // Fetch chat logs for a room
     async function fetchChatLogs(room) {
         try {
             console.log('Fetching chat logs.');
