@@ -27,7 +27,7 @@ pip install -r requirements.txt
 ```
 
 # Set up MySQL database
-Create an MySQL database for the project.
+Create an MySQL database for the project. In the submission, there will be a MySQL dump with the data and tables named 'fypdatabase.sql'
 
 I personally used MySQL workbench to create a connection for the server side
 
