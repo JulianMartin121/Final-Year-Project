@@ -29,7 +29,10 @@ pip install -r requirements.txt
 # Set up MySQL database
 Create an MySQL database for the project. In the submission, there will be a MySQL dump with the data and tables named 'fypdatabase.sql'
 
-I personally used MySQL workbench to create a connection for the server side
+I personally used MySQL workbench to create a connection for the server side.
+
+IMPORTANT: If you are using MySQL Workbench, create your own server as mentioned, go to Server which is found in the tabs (where file, edit, view etc. is) and press Data Import.
+You should select "Import from Self-Contained File" and select the 'fypdatabase.sql'
 
 You will need to adjust .env file to fit your MySQL database. Both Django settings.py and Node server.js should already contain the necessary functions to get the .env names
 
